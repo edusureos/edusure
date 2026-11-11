@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <linearGradient id="eduGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284C7" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+    <linearGradient id="skyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#0284C7" />
+    </linearGradient>
+  </defs>
+  <!-- Background Shield Silhouette -->
+  <path d="M24 4L7 11V23C7 33.5 14.3 43.1 24 46C33.7 43.1 41 33.5 41 23V11L24 4Z" fill="url(#eduGrad)" />
+  <!-- Academic Graduation Cap Merged with Shield -->
+  <path d="M24 14L13 19.5L24 25L35 19.5L24 14Z" fill="white" />
+  <path d="M17 22.5V28C17 30 20 32 24 32C28 32 31 30 31 28V22.5L24 26L17 22.5Z" fill="#E0F2FE" />
+  <!-- Security Check Accent -->
+  <circle cx="34" cy="32" r="5" fill="#38BDF8" />
+  <path d="M32 32L33.5 33.5L36.5 30.5" stroke="#0F172A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
