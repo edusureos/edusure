@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # EcoRoute AI 🌿
 > **"Smarter Routes. Cleaner Cities."**  
 > AI-Powered Smart Waste Collection Optimizer for Municipal Fleets
@@ -108,3 +109,7 @@ $$\text{CO}_2\text{ Avoided (kg)} = \text{Fuel Saved (L)} \times 2.68$$
 ## 🛡 Prototype Disclosures
 - **Geographic Approximation**: Distances are computed via the Haversine great-circle formula between coordinates. Straight-line geodesic distance represents an operational heuristic approximation for demonstration purposes.
 - **Simulated Stream**: Receptacle telemetry is simulated around the Delhi Smart Urban Zone (Rohini / DTU Campus environs) using a deterministic seed (42) for reproducible demonstrations. Dynamic sensor updates can be simulated at any time using the "Refresh Readings" action.
+=======
+# edusure
+Edu Sure OS
+>>>>>>> 9038c0ee369ebe2108ff55e597ea5e270666c520
