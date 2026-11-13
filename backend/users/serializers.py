@@ -22,13 +22,16 @@ class CustomLoginSerializer(TokenObtainPairSerializer):
         data['requires_password_change'] = user.requires_password_change
         data['username'] = user.username
         data['phone_number'] = phone  # This fixes the "undefined" error!
-        
+        data['school_id'] = user.school_id
+
         return data
 
 
 class FirebaseLoginSerializer(serializers.Serializer):
     id_token = serializers.CharField(help_text="Firebase ID Token returned by Client SDK after SMS OTP verification")
 
+class FirebaseLoginSerializer(serializers.Serializer):
+    id_token = serializers.CharField(required=True, help_text="The ID token returned by Firebase Phone Auth")
 
 class FirstLoginPasswordChangeSerializer(serializers.Serializer):
     new_password = serializers.CharField(write_only=True)
@@ -85,6 +88,143 @@ class VerifyOTPAndResetPasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(write_only=True)
 
 
+import datetime
+import secrets
+import string
+from django.db import transaction
+from django.db.models import Max
+from .models import User, StudentProfile, TeacherProfile, Notice
 
-class FirebaseLoginSerializer(serializers.Serializer):
-    id_token = serializers.CharField(required=True, help_text="The ID token returned by Firebase Phone Auth")
+
+def generate_next_erp_id(school_id: int, role_digit: str) -> str:
+    """Generates [SCHOOL(3)][ROLE(1)][YEAR(2)][SERIAL(4)] e.g. 1010260001"""
+    year_short = datetime.date.today().strftime('%y')
+    prefix = f"{int(school_id):03d}{role_digit}{year_short}"
+
+    last_user = (
+        User.objects.filter(username__startswith=prefix)
+        .aggregate(max_id=Max('username'))
+        .get('max_id')
+    )
+
+    if last_user and len(last_user) == 10 and last_user[6:].isdigit():
+        next_serial = int(last_user[6:]) + 1
+    else:
+        next_serial = 1
+
+    return f"{prefix}{next_serial:04d}"
+
+
+def generate_temp_password(length=8) -> str:
+    chars = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(chars) for _ in range(length))
+
+
+def get_unique_user_phone(phone: str):
+    """Returns phone if not already taken on User model, else None (prevents sibling crash)."""
+    cleaned = (phone or '').strip()
+    if not cleaned:
+        return None
+    if User.objects.filter(phone_number=cleaned).exists():
+        return None
+    return cleaned
+
+
+class AdminCreateStudentSerializer(serializers.ModelSerializer):
+    generated_user_id = serializers.CharField(source='user.username', read_only=True)
+    temporary_password = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = StudentProfile
+        fields = [
+            'generated_user_id', 'temporary_password',
+            'admission_number', 'first_name', 'last_name',
+            'class_grade', 'section', 'roll_number', 'dob',
+            'blood_group', 'father_name', 'registered_phone', 'address'
+        ]
+
+    @transaction.atomic
+    def create(self, validated_data):
+        request = self.context.get('request')
+        school_id = getattr(request.user, 'school_id', None) or 101
+
+        new_username = generate_next_erp_id(school_id, role_digit='0')
+        temp_password = generate_temp_password()
+        raw_phone = validated_data.get('registered_phone', '')
+
+        user = User.objects.create_user(
+            username=new_username,
+            password=temp_password,
+            first_name=validated_data.get('first_name', ''),
+            last_name=validated_data.get('last_name', ''),
+            phone_number=get_unique_user_phone(raw_phone),
+            role=User.Role.STUDENT,
+            school_id=school_id,
+            requires_password_change=True,
+        )
+
+        profile = StudentProfile.objects.create(user=user, **validated_data)
+        profile.temporary_password = temp_password
+        return profile
+
+
+class AdminStudentListSerializer(serializers.ModelSerializer):
+    user_id = serializers.CharField(source='user.username', read_only=True)
+    is_active = serializers.BooleanField(source='user.is_active', read_only=True)
+
+    class Meta:
+        model = StudentProfile
+        fields = [
+            'user_id', 'is_active', 'admission_number',
+            'first_name', 'last_name', 'class_grade', 'section',
+            'roll_number', 'dob', 'blood_group', 'father_name',
+            'registered_phone', 'address'
+        ]
+
+
+class AdminTeacherSerializer(serializers.ModelSerializer):
+    user_id = serializers.CharField(source='user.username', read_only=True)
+    is_active = serializers.BooleanField(source='user.is_active', read_only=True)
+    temporary_password = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = TeacherProfile
+        fields = [
+            'user_id', 'is_active', 'temporary_password',
+            'employee_id', 'first_name', 'last_name',
+            'subject', 'qualification', 'class_teacher_of',
+            'registered_phone', 'joining_date'
+        ]
+
+    @transaction.atomic
+    def create(self, validated_data):
+        request = self.context.get('request')
+        school_id = getattr(request.user, 'school_id', None) or 101
+
+        new_username = generate_next_erp_id(school_id, role_digit='1')
+        temp_password = generate_temp_password()
+        raw_phone = validated_data.get('registered_phone', '')
+
+        user = User.objects.create_user(
+            username=new_username,
+            password=temp_password,
+            first_name=validated_data.get('first_name', ''),
+            last_name=validated_data.get('last_name', ''),
+            phone_number=get_unique_user_phone(raw_phone),
+            role=User.Role.TEACHER,
+            school_id=school_id,
+            requires_password_change=True,
+        )
+
+        profile = TeacherProfile.objects.create(user=user, **validated_data)
+        profile.temporary_password = temp_password
+        return profile
+
+
+class NoticeSerializer(serializers.ModelSerializer):
+    posted_by = serializers.CharField(source='created_by.username', read_only=True)
+
+    class Meta:
+        model = Notice
+        fields = ['id', 'title', 'content', 'target_role', 'target_class', 'posted_by', 'created_at']
+        read_only_fields = ['id', 'posted_by', 'created_at']

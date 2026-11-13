@@ -7,8 +7,14 @@ from .views import (
     UserProfileView,
     LogoutView,
     FirebaseLoginView,
+    AdminDashboardStatsView,       
+    AdminStudentListCreateView,
+    AdminStudentDetailView,
+    AdminTeacherListCreateView,
+    NoticeListCreateView,
 )
 from .bulk_views import BulkStudentEnrollmentView
+
 
 urlpatterns = [
     # Auth endpoints
@@ -24,5 +30,11 @@ urlpatterns = [
     path('bulk-enroll/', BulkStudentEnrollmentView.as_view(), name='bulk-student-enroll'),
     path('first-login-change-password/', FirstLoginPasswordChangeView.as_view(), name='first-login-change-password'),
 
+    path('admin/stats/', AdminDashboardStatsView.as_view(), name='admin-stats'),
+    path('admin/students/', AdminStudentListCreateView.as_view(), name='admin-students'),
+
+    path('admin/students/<str:username>/', AdminStudentDetailView.as_view(), name='admin-student-detail'),
+    path('admin/teachers/', AdminTeacherListCreateView.as_view(), name='admin-teachers'),
+    path('notices/', NoticeListCreateView.as_view(), name='notices'),
     
 ]

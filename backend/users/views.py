@@ -18,6 +18,14 @@ from .serializers import (
     VerifyOTPAndResetPasswordSerializer,
     FirebaseLoginSerializer,
 )
+from django.db.models import Q, Count
+from .permissions import IsSchoolAdmin
+from .models import StudentProfile
+from .serializers import AdminCreateStudentSerializer, AdminStudentListSerializer
+from django.shortcuts import get_object_or_404
+from .models import TeacherProfile, Notice
+from .serializers import AdminTeacherSerializer, NoticeSerializer
+
 
 class CustomLoginView(TokenObtainPairView):
     serializer_class = CustomLoginSerializer
@@ -197,3 +205,144 @@ class FirebaseLoginView(APIView):
             return Response({"error": "Invalid or expired Firebase token."}, status=status.HTTP_401_UNAUTHORIZED)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AdminDashboardStatsView(APIView):
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
+
+    @extend_schema(summary="Get Admin Dashboard summary counts")
+    def get(self, request):
+        school_id = request.user.school_id
+        students_qs = User.objects.filter(school_id=school_id, role='STUDENT', is_active=True)
+        teachers_qs = User.objects.filter(school_id=school_id, role='TEACHER', is_active=True)
+
+        class_breakdown = (
+            StudentProfile.objects.filter(user__school_id=school_id, user__is_active=True)
+            .values('class_grade', 'section')
+            .annotate(count=Count('id'))
+            .order_by('class_grade', 'section')
+        )
+
+        return Response({
+            "school_id": school_id,
+            "total_students": students_qs.count(),
+            "total_teachers": teachers_qs.count(),
+            "class_breakdown": list(class_breakdown),
+        }, status=status.HTTP_200_OK)
+
+
+class AdminStudentListCreateView(APIView):
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
+
+    @extend_schema(
+        summary="List & search students in Admin's school",
+        responses={200: AdminStudentListSerializer(many=True)}
+    )
+    def get(self, request):
+        school_id = request.user.school_id
+        qs = StudentProfile.objects.select_related('user').filter(user__school_id=school_id)
+
+        # Optional query filters: ?class_grade=10&section=A&search=Rahul
+        class_grade = request.query_params.get('class_grade')
+        section = request.query_params.get('section')
+        search = request.query_params.get('search')
+
+        if class_grade:
+            qs = qs.filter(class_grade=class_grade)
+        if section:
+            qs = qs.filter(section=section)
+        if search:
+            qs = qs.filter(
+                Q(user__username__icontains=search) |
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search) |
+                Q(admission_number__icontains=search)
+            )
+
+        serializer = AdminStudentListSerializer(qs.order_by('class_grade', 'roll_number'), many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="Create a new student with auto-generated 10-digit ID",
+        request=AdminCreateStudentSerializer,
+        responses={201: AdminCreateStudentSerializer}
+    )
+    def post(self, request):
+        serializer = AdminCreateStudentSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)   
+
+
+
+class AdminStudentDetailView(APIView):
+    """Edit student profile or activate/deactivate account"""
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
+
+    @extend_schema(request=AdminStudentListSerializer, responses={200: AdminStudentListSerializer})
+    def patch(self, request, username):
+        student_user = get_object_or_404(
+            User, username=username, school_id=request.user.school_id, role=User.Role.STUDENT
+        )
+        if 'is_active' in request.data:
+            student_user.is_active = bool(request.data['is_active'])
+            student_user.save(update_fields=['is_active'])
+
+        profile = student_user.student_profile
+        serializer = AdminStudentListSerializer(profile, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminTeacherListCreateView(APIView):
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
+
+    @extend_schema(summary="List all teachers in Admin's school", responses={200: AdminTeacherSerializer(many=True)})
+    def get(self, request):
+        qs = TeacherProfile.objects.select_related('user').filter(user__school_id=request.user.school_id)
+        serializer = AdminTeacherSerializer(qs.order_by('first_name'), many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(summary="Onboard a new teacher with auto 10-digit ID", request=AdminTeacherSerializer, responses={201: AdminTeacherSerializer})
+    def post(self, request):
+        serializer = AdminTeacherSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class NoticeListCreateView(APIView):
+    """GET: Students/Teachers/Admins view school notices | POST: Admin creates notice"""
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(summary="Fetch notices for logged-in user's school & role", responses={200: NoticeSerializer(many=True)})
+    def get(self, request):
+        user = request.user
+        qs = Notice.objects.filter(school_id=user.school_id)
+
+        if user.role == User.Role.STUDENT:
+            sp = getattr(user, 'student_profile', None)
+            student_class = sp.class_grade if sp else ''
+            qs = qs.filter(target_role__in=['ALL', 'STUDENT']).filter(
+                Q(target_class='') | Q(target_class=student_class)
+            )
+        elif user.role == User.Role.TEACHER:
+            qs = qs.filter(target_role__in=['ALL', 'TEACHER'])
+
+        serializer = NoticeSerializer(qs, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(summary="Publish a new notice (Admin only)", request=NoticeSerializer, responses={201: NoticeSerializer})
+    def post(self, request):
+        if request.user.role not in [User.Role.SCHOOL_ADMIN, User.Role.SUPER_ADMIN]:
+            return Response({"detail": "Only School Admins can publish notices."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = NoticeSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(school_id=request.user.school_id, created_by=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)         

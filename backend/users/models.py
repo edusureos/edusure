@@ -23,7 +23,7 @@ class CustomUserManager(BaseUserManager):
 
 class User(AbstractUser):
     email = None
-    
+
     class Role(models.TextChoices):
         SUPER_ADMIN = 'SUPER_ADMIN', 'Super Admin'
         SCHOOL_ADMIN = 'SCHOOL_ADMIN', 'School Admin'
@@ -36,7 +36,6 @@ class User(AbstractUser):
     school_id = models.IntegerField(null=True, blank=True)
 
     REQUIRED_FIELDS = []
-
     objects = CustomUserManager()
 
     class Meta:
@@ -47,9 +46,11 @@ class User(AbstractUser):
 
     def save(self, *args, **kwargs):
         if not self.is_superuser and self.username:
-            # 10-Digit ID Pattern Logic: [SCHOOL(3)][ROLE_DIGIT(1)][YEAR(2)][SERIAL(4)]
-            # Example: '1010260001' -> 4th digit (index 3) defines role
+            # 10-Digit ID Pattern: [SCHOOL(3)][ROLE_DIGIT(1)][YEAR(2)][SERIAL(4)]
             if len(self.username) == 10 and self.username.isdigit():
+                if self.school_id is None:
+                    self.school_id = int(self.username[:3])
+
                 role_digit = self.username[3]
                 if role_digit == '0':
                     self.role = self.Role.STUDENT
@@ -57,7 +58,7 @@ class User(AbstractUser):
                     self.role = self.Role.TEACHER
                 elif role_digit == '2':
                     self.role = self.Role.SCHOOL_ADMIN
-            
+
         super().save(*args, **kwargs)
 
 
@@ -79,10 +80,46 @@ class StudentProfile(models.Model):
         return f"{self.user.username} - {self.first_name} {self.last_name}".strip()
 
 
+class TeacherProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='teacher_profile')
+    employee_id = models.CharField(max_length=20, unique=True, null=True, blank=True)
+    first_name = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=50, blank=True)
+    subject = models.CharField(max_length=100, blank=True)
+    qualification = models.CharField(max_length=100, blank=True)
+    class_teacher_of = models.CharField(max_length=15, blank=True, help_text="e.g. 10-A")
+    registered_phone = models.CharField(max_length=15, blank=True)
+    joining_date = models.DateField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.first_name} {self.last_name}".strip()
+
+
+class Notice(models.Model):
+    class TargetRole(models.TextChoices):
+        ALL = 'ALL', 'All'
+        STUDENT = 'STUDENT', 'Students Only'
+        TEACHER = 'TEACHER', 'Teachers Only'
+
+    school_id = models.IntegerField(db_index=True)
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    target_role = models.CharField(max_length=20, choices=TargetRole.choices, default=TargetRole.ALL)
+    target_class = models.CharField(max_length=10, blank=True, help_text="Blank = all classes, e.g. '10'")
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"[{self.school_id}] {self.title}"
+
+
 class OTPStore(models.Model):
     phone_number = models.CharField(max_length=15)
     otp = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.phone_number} - OTP: {self.otp}"
+        return f"{self.phone_number} OTP: {self.otp}"

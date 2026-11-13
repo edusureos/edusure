@@ -171,7 +171,7 @@ SPECTACULAR_SETTINGS = {
 }
 
 # 5. Firebase Admin SDK Initialization
-FIREBASE_CRED_PATH = BASE_DIR / 'firebase_key.json'
+FIREBASE_CRED_PATH = BASE_DIR / 'firebase-adminsdk.json'
 
 if FIREBASE_CRED_PATH.exists() and not firebase_admin._apps:
     cred = credentials.Certificate(str(FIREBASE_CRED_PATH))
