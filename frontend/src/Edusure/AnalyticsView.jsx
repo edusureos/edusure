@@ -219,9 +219,7 @@ export default function AnalyticsView({ analytics, routeResult }) {
           <ShieldCheck className="w-4 h-4 text-[#234C36]" />
           Methodology & Mathematical Reproducibility
         </div>
-        <p className="text-[#788278] leading-relaxed">
-          EcoRoute AI evaluates municipal routing using the <strong>Haversine great-circle distance matrix</strong> coupled with a <strong>Nearest-Neighbor Traveling Salesperson Problem (TSP) heuristic</strong>. The baseline route visits selected points in sequential order from the depot and returns to the depot. The optimized route initiates at the municipal depot, sequentially traverses to the unvisited node with minimal geodesic distance, and closes the circuit back at the depot.
-        </p>
+
         <div className="pt-2 flex flex-wrap gap-4 text-[11px] text-[#234C36] font-medium">
           <span>• Emission factor: 2.68 kg CO₂ / liter diesel</span>
           <span>• Fleet fuel rate: 28.0 L / 100 km</span>

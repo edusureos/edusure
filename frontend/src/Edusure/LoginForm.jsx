@@ -149,7 +149,7 @@ export default function LoginForm({ onLogin }) {
                 className="w-4 h-4 rounded border-slate-300 text-[#2E7D32] focus:ring-[#2E7D32]/20 focus:ring-2 cursor-pointer transition-colors accent-[#2E7D32]"
               />
               <span className="text-xs text-slate-600 group-hover:text-slate-800 transition-colors">
-                Remember ID
+                Remember Me
               </span>
             </label>
 
@@ -179,17 +179,7 @@ export default function LoginForm({ onLogin }) {
       </form>
 
       <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-        <div className="flex items-center justify-center gap-1.5 text-xs text-slate-500">
-          <ShieldCheck className="w-4 h-4 text-[#2E7D32] flex-shrink-0" />
-          <span>Protected by EduSure Guard™ • 256-Bit SSL Encryption</span>
-        </div>
-        <div className="flex items-center justify-center gap-3 text-[11px] text-slate-400 mt-2">
-          <span className="hover:text-slate-600 cursor-pointer transition-colors">FERPA & GDPR Compliant</span>
-          <span>•</span>
-          <span className="hover:text-slate-600 cursor-pointer transition-colors">Privacy Policy</span>
-          <span>•</span>
-          <span className="hover:text-slate-600 cursor-pointer transition-colors">Help & Support</span>
-        </div>
+        
       </div>
 
       <ForgotPasswordModal

@@ -1,22 +1,22 @@
 /**
- * EcoRoute AI API Service
+ * 
  */
 
 const API_BASE = '/api';
 
 export async function fetchHealth() {
-  const res = await fetch(`${API_BASE}/health`);
-  if (!res.ok) throw new Error(`Health check failed: ${res.statusText}`);
-  return res.json();
+    const res = await fetch(`${API_BASE}/health`);
+    if (!res.ok) throw new Error(`Health check failed: ${res.statusText}`);
+    return res.json();
 }
 
 export async function fetchBins(params = {}) {
-  const query = new URLSearchParams();
-  if (params.priority) query.append('priority', params.priority);
-  if (params.waste_type) query.append('waste_type', params.waste_type);
-  if (params.search) query.append('search', params.search);
+    const query = new URLSearchParams();
+    if (params.priority) query.append('priority', params.priority);
+    if (params.waste_type) query.append('waste_type', params.waste_type);
+    if (params.search) query.append('search', params.search);
 
-  const url = `${API_BASE}/bins${query.toString() ? `?${query.toString()}` : ''}`;
+    const url = `${API_BASE}/bins${query.toString() ? `?${query.toString()}` : ''}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to load bins: ${res.statusText}`);
   return res.json();

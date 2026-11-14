@@ -33,7 +33,7 @@ export default function Sidebar({ activeTab, setActiveTab, urgentCount = 0 }) {
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <h1 className="font-bold text-[17px] tracking-tight text-[#183D2B]">EcoRoute AI</h1>
+                <h1 className="font-bold text-[17px] tracking-tight text-[#183D2B]"></h1>
                 <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#E6EFE5] text-[#234C36]">
                   PROTOTYPE
                 </span>
@@ -96,9 +96,7 @@ export default function Sidebar({ activeTab, setActiveTab, urgentCount = 0 }) {
             <span className="font-semibold text-[#183D2B] text-[11px]">1 Active</span>
           </div>
         </div>
-        <p className="text-[10px] text-center text-[#788278] mt-3">
-          EcoRoute AI Engine v1.0 • Delhi Smart Fleet
-        </p>
+
       </div>
     </aside>
   );

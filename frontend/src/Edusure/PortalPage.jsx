@@ -384,7 +384,7 @@ export default function PortalPage({ onLogout, userId, profile = {} }) {
               <LayoutDashboard className="w-4.5 h-4.5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-[#0A192F] font-heading">Dashboard Menu</h3>
+              <h3 className="text-sm font-bold text-[#0A192F] font-heading">Menu</h3>
               <p className="text-[11px] text-slate-400">EduSure Portal</p>
             </div>
           </div>
