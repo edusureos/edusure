@@ -6,6 +6,7 @@ import {
   LockKeyhole, LogOut, Menu, Megaphone, Pencil, Plus, Search, Settings, ShieldCheck,
   SlidersHorizontal, UserRound, UserRoundCheck, Users, X,
 } from 'lucide-react';
+import './admin.css';
 import { adminEndpoints, adminRequest } from './adminApi';
 
 const emptyRecords = Object.freeze([]);
@@ -159,7 +160,6 @@ function StudentForm({ record, busy, onClose, onSubmit }) {
     ['last_name', 'Last name', 'text', false],
     ['class_grade', 'Class / grade', 'text', false],
     ['section', 'Section', 'text', false],
-    ['admission_number', 'Admission number', 'text', false],
     ['roll_number', 'Roll number', 'number', false],
     ['dob', 'Date of birth', 'date', false],
     ['blood_group', 'Blood group', 'text', false],

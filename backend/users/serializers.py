@@ -1,8 +1,8 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.password_validation import validate_password
-from .models import User, StudentProfile
 from django.contrib.auth import get_user_model
+from .models import User, StudentProfile, TeacherProfile, Notice, Attendance
 
 
 class CustomLoginSerializer(TokenObtainPairSerializer):
@@ -222,9 +222,55 @@ class AdminTeacherSerializer(serializers.ModelSerializer):
 
 
 class NoticeSerializer(serializers.ModelSerializer):
-    posted_by = serializers.CharField(source='created_by.username', read_only=True)
+    created_by = serializers.CharField(source='created_by.username', read_only=True)
+    target_roles = serializers.ListField(
+        child=serializers.ChoiceField(choices=Notice.TargetRole.choices),
+        allow_empty=False,
+    )
+    target_classes = serializers.ListField(
+        child=serializers.CharField(max_length=20),
+        required=False,
+        default=list,
+    )
 
     class Meta:
         model = Notice
-        fields = ['id', 'title', 'content', 'target_role', 'target_class', 'posted_by', 'created_at']
-        read_only_fields = ['id', 'posted_by', 'created_at']
+        fields = [
+            'id', 'title', 'content',
+            'target_roles', 'target_classes',
+            'created_by', 'created_at',
+        ]
+        read_only_fields = ['id', 'created_by', 'created_at']
+
+    def validate_target_roles(self, value):
+        unique_roles = list(dict.fromkeys(value))
+        if 'ALL' in unique_roles:
+            return ['ALL']
+        return unique_roles
+
+    def validate_target_classes(self, value):
+        cleaned = [str(c).strip() for c in value if str(c).strip()]
+        return list(dict.fromkeys(cleaned))
+
+    def validate(self, attrs):
+        if attrs.get('target_roles') == ['TEACHER']:
+            attrs['target_classes'] = []
+        return attrs
+
+class AttendanceItemSerializer(serializers.Serializer):
+    student_id = serializers.CharField(help_text="10-digit Student User ID (e.g. 1010260001)")
+    status = serializers.ChoiceField(choices=Attendance.Status.choices)
+    remarks = serializers.CharField(required=False, allow_blank=True, default='')
+
+
+class BulkMarkAttendanceSerializer(serializers.Serializer):
+    date = serializers.DateField(default=datetime.date.today)
+    records = AttendanceItemSerializer(many=True, allow_empty=False)
+
+
+class StudentAttendanceRecordSerializer(serializers.ModelSerializer):
+    marked_by = serializers.CharField(source='marked_by.username', read_only=True)
+
+    class Meta:
+        model = Attendance
+        fields = ['date', 'status', 'remarks', 'marked_by']        

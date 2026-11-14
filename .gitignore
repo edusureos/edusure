@@ -1,3 +1,9 @@
 
 *firebase-adminsdk*.json
 firebase_key.json
+venv/
+__pycache__/
+*.py[cod]
+db.sqlite3
+.env
+firebase-adminsdk.json

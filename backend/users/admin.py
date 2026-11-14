@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, StudentProfile, TeacherProfile, Notice, OTPStore
+from .models import User, StudentProfile, TeacherProfile, Notice, OTPStore , Attendance
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
@@ -19,9 +19,16 @@ class TeacherProfileAdmin(admin.ModelAdmin):
 
 @admin.register(Notice)
 class NoticeAdmin(admin.ModelAdmin):
-    list_display = ('title', 'school_id', 'target_role', 'target_class', 'created_at')
-    list_filter = ('school_id', 'target_role')
-
+    list_display = ('title', 'school_id', 'target_roles', 'target_classes', 'created_by', 'created_at')
+    list_filter = ('school_id', 'created_at')
+    search_fields = ('title', 'content')
+    
 @admin.register(OTPStore)
 class OTPStoreAdmin(admin.ModelAdmin):
     list_display = ('phone_number', 'otp', 'created_at')
+
+@admin.register(Attendance)
+class AttendanceAdmin(admin.ModelAdmin):
+    list_display = ('student', 'date', 'status', 'school_id', 'marked_by')
+    list_filter = ('school_id', 'date', 'status')
+    search_fields = ('student__username',)    

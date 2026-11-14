@@ -97,16 +97,16 @@ class TeacherProfile(models.Model):
 
 class Notice(models.Model):
     class TargetRole(models.TextChoices):
-        ALL = 'ALL', 'All'
-        STUDENT = 'STUDENT', 'Students Only'
-        TEACHER = 'TEACHER', 'Teachers Only'
+        ALL = 'ALL', 'Everyone'
+        STUDENT = 'STUDENT', 'Students'
+        TEACHER = 'TEACHER', 'Teachers'
 
     school_id = models.IntegerField(db_index=True)
     title = models.CharField(max_length=200)
     content = models.TextField()
-    target_role = models.CharField(max_length=20, choices=TargetRole.choices, default=TargetRole.ALL)
-    target_class = models.CharField(max_length=10, blank=True, help_text="Blank = all classes, e.g. '10'")
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    target_roles = models.JSONField(default=list)
+    target_classes = models.JSONField(default=list, blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_notices')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -123,3 +123,35 @@ class OTPStore(models.Model):
 
     def __str__(self):
         return f"{self.phone_number} OTP: {self.otp}"
+
+
+class Attendance(models.Model):
+    class Status(models.TextChoices):
+        PRESENT = 'PRESENT', 'Present'
+        ABSENT = 'ABSENT', 'Absent'
+        LATE = 'LATE', 'Late'
+
+    school_id = models.IntegerField(db_index=True)
+    student = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='attendance_records'
+    )
+    date = models.DateField(db_index=True)
+    status = models.CharField(
+        max_length=10, choices=Status.choices, default=Status.PRESENT
+    )
+    remarks = models.CharField(max_length=255, blank=True)
+    marked_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='marked_attendances'
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('student', 'date')
+        ordering = ['-date', 'student__username']
+        indexes = [
+            models.Index(fields=['school_id', 'date']),
+            models.Index(fields=['student', 'date']),
+        ]
+
+    def __str__(self):
+        return f"{self.student.username} | {self.date} | {self.status}"    

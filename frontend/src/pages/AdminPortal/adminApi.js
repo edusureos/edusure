@@ -54,5 +54,6 @@ export const adminEndpoints = {
   students: '/admin/students/',
   student: (userId) => `/admin/students/${encodeURIComponent(userId)}/`,
   teachers: '/admin/teachers/',
+  classAttendance: '/api/users/attendance/class/',
   notices: '/notices/',
 };

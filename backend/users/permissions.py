@@ -7,3 +7,10 @@ class IsSchoolAdmin(BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
         return getattr(request.user, 'role', '') in ['SCHOOL_ADMIN', 'SUPER_ADMIN']
+
+class IsTeacherOrSchoolAdmin(BasePermission):
+    """Allows access to authenticated TEACHER, SCHOOL_ADMIN, or SUPER_ADMIN users."""
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return getattr(request.user, 'role', '') in ['TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN']    
