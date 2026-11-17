@@ -20,6 +20,17 @@ export default defineConfig({
   },
   build: {
     rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: 'three-vendor',
+              test: /node_modules[\\/]three[\\/]/,
+              maxSize: 350 * 1024,
+            },
+          ],
+        },
+      },
       input: {
         main: fileURLToPath(new URL('./index.html', import.meta.url)),
         adminPortal: fileURLToPath(new URL('./admin-portal.html', import.meta.url)),

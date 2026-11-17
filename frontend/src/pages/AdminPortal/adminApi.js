@@ -26,7 +26,8 @@ function describePayload(payload) {
 export async function adminRequest(path, token, options = {}) {
   const headers = new Headers(options.headers);
   headers.set('Authorization', `Bearer ${token}`);
-  if (options.body && !headers.has('Content-Type')) {
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+  if (options.body && !isFormData && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
@@ -48,10 +49,47 @@ export async function adminRequest(path, token, options = {}) {
   return payload;
 }
 
+export async function downloadAdminExport(entity, fileFormat, token, filters = {}) {
+  const params = new URLSearchParams(
+    Object.entries(filters).filter(([, value]) => value !== '' && value != null),
+  );
+  const queryString = params.toString();
+  const query = queryString ? `?${queryString}` : '';
+  const response = await fetch(
+    `${API_ROOT}/admin/export/${encodeURIComponent(entity)}/${encodeURIComponent(fileFormat)}/${query}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!response.ok) {
+    let payload;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+    throw new AdminApiError(
+      describePayload(payload) || `Export failed (${response.status}).`,
+      response.status,
+      payload,
+    );
+  }
+
+  const disposition = response.headers.get('Content-Disposition') || '';
+  const fileName = disposition.match(/filename="?([^";]+)"?/i)?.[1] || `${entity}.${fileFormat}`;
+  const url = window.URL.createObjectURL(await response.blob());
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
+}
+
 export const adminEndpoints = {
   profile: '/me/',
   stats: '/admin/stats/',
   students: '/admin/students/',
+  bulkEnroll: '/bulk-enroll/',
   student: (userId) => `/admin/students/${encodeURIComponent(userId)}/`,
   teachers: '/admin/teachers/',
   classAttendance: '/api/users/attendance/class/',

@@ -7,11 +7,18 @@
   --color-edusure-green: #2E7D32;
   --color-edusure-border: #E2E8F0;
   --radius-edusure-card: 1.5rem;
+  --clay-canvas: #EDF4EE;
+  --clay-surface: #F4F7FB;
+  --clay-card-bg: var(--clay-surface);
+  --clay-edge-start: rgb(46 125 50 / 26%);
+  --clay-edge-end: rgb(121 103 181 / 23%);
+  --clay-shadow-raised: 9px 9px 18px rgb(148 163 184 / 22%), -8px -8px 18px rgb(255 255 255 / 96%);
+  --clay-shadow-inset: inset 4px 4px 8px rgb(148 163 184 / 18%), inset -4px -4px 8px rgb(255 255 255 / 96%);
 }
 
 body {
   font-family: var(--font-body);
-  background-color: #FFFFFF;
+  background-color: var(--clay-canvas);
   color: var(--color-edusure-navy);
   margin: 0;
   padding: 0;
@@ -22,6 +29,77 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+[class~="min-h-screen"][class*="bg-slate-50"] {
+  background-color: var(--clay-canvas);
+}
+
+[class~="bg-white"][class~="rounded-xl"] {
+  border-color: rgb(255 255 255 / 92%);
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--clay-card-bg), var(--clay-card-bg)) padding-box,
+    linear-gradient(135deg, var(--clay-edge-start), rgb(255 255 255 / 92%) 48%, var(--clay-edge-end)) border-box;
+  box-shadow: 5px 5px 12px rgb(148 163 184 / 18%), -5px -5px 12px rgb(255 255 255 / 96%);
+}
+
+[class~="bg-white"][class~="rounded-2xl"],
+[class~="bg-white"][class~="rounded-3xl"] {
+  border-color: rgb(255 255 255 / 94%);
+  border: 1px solid transparent;
+  border-radius: var(--radius-edusure-card);
+  background:
+    linear-gradient(var(--clay-card-bg), var(--clay-card-bg)) padding-box,
+    linear-gradient(135deg, var(--clay-edge-start), rgb(255 255 255 / 92%) 48%, var(--clay-edge-end)) border-box;
+  box-shadow: var(--clay-shadow-raised), inset 1px 1px 0 rgb(255 255 255 / 72%);
+}
+
+.clay-tone-mint {
+  --clay-card-bg: #F0F7EF;
+  --clay-edge-start: #A9D6AE;
+  --clay-edge-end: #D7C8EB;
+}
+
+.clay-tone-lilac {
+  --clay-card-bg: #F5F0FA;
+  --clay-edge-start: #CDBAE5;
+  --clay-edge-end: #B9DABF;
+}
+
+.clay-tone-blue {
+  --clay-card-bg: #EFF5FB;
+  --clay-edge-start: #B6D2EE;
+  --clay-edge-end: #CFBDE4;
+}
+
+.clay-tone-rose {
+  --clay-card-bg: #FBF1F5;
+  --clay-edge-start: #E5BFCF;
+  --clay-edge-end: #C9C0E5;
+}
+
+.clay-tone-amber {
+  --clay-card-bg: #FAF6EB;
+  --clay-edge-start: #E3D29F;
+  --clay-edge-end: #C8DABF;
+}
+
+.clay-login-card {
+  --clay-card-bg: #F0F7EF;
+  --clay-edge-start: #A9D6AE;
+  --clay-edge-end: #D7C8EB;
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+  border: 1px solid transparent;
+  border-radius: 1.75rem;
+  background:
+    linear-gradient(var(--clay-card-bg), var(--clay-card-bg)) padding-box,
+    linear-gradient(135deg, var(--clay-edge-start), rgb(255 255 255 / 92%) 48%, var(--clay-edge-end)) border-box;
+  box-shadow: 12px 12px 26px rgb(148 163 184 / 22%), -12px -12px 26px rgb(255 255 255 / 98%);
 }
 
 /* Custom scrollbar for sleek minimalistic aesthetic */

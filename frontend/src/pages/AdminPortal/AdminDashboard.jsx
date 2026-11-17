@@ -1,20 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowDownToLine, ArrowRight, Bell, BookOpen, CalendarDays, Check,
   ChevronDown, ChevronLeft, ChevronRight, CircleAlert, ClipboardCheck,
   CreditCard, FileBarChart, FileText, GraduationCap, LayoutDashboard,
   LockKeyhole, LogOut, Menu, Megaphone, Pencil, Plus, Search, Settings, ShieldCheck,
-  SlidersHorizontal, UserRound, UserRoundCheck, Users, X,
+  SlidersHorizontal, Upload, UserRound, UserRoundCheck, Users, X,
 } from 'lucide-react';
 import './admin.css';
-import { adminEndpoints, adminRequest } from './adminApi';
+import { adminEndpoints, adminRequest, downloadAdminExport } from './adminApi';
 
 const emptyRecords = Object.freeze([]);
 
 const navigation = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'School' },
   { id: 'students', label: 'Students', icon: Users, group: 'School' },
-  { id: 'teachers', label: 'Teachers', icon: UserRoundCheck, group: 'School' },
+  { id: 'teachers', label: 'Faculty Directory', icon: UserRoundCheck, group: 'School' },
   { id: 'classes', label: 'Classes & Sections', icon: BookOpen, group: 'School' },
   { id: 'timetable', label: 'Timetable', icon: CalendarDays, group: 'Academics' },
   { id: 'attendance', label: 'Attendance', icon: ClipboardCheck, group: 'Academics' },
@@ -28,11 +28,11 @@ const navigation = [
 
 const pageCopy = {
   dashboard: ['School overview', 'A clear view of your school workspace and connected records.'],
-  students: ['Students', 'Search and manage student records for your school.'],
-  teachers: ['Teachers', 'Review the teaching team connected to your school.'],
+  students: ['Students', ''],
+  teachers: ['Faculty Directory', 'Review the teaching team connected to your school.'],
   classes: ['Classes & Sections', 'Review class and section totals from student records.'],
   timetable: ['Timetable', 'Class schedules will be available when timetable data is connected.'],
-  attendance: ['Attendance', 'Attendance records will be available when attendance data is connected.'],
+  attendance: ['Daily Class Attendance', 'Mark attendance for a class and date.'],
   examinations: ['Examinations', 'Exam schedules will be available when examination data is connected.'],
   reports: ['Results & Reports', 'Academic results will be available when reporting data is connected.'],
   fees: ['Fee Management', 'Fee records will be available when finance data is connected.'],
@@ -281,6 +281,45 @@ function DashboardPage({ stats, statsLoading, statsError, notices, noticesLoadin
   );
 }
 
+function ExportButtons({ entity, token, filters, disabled = false }) {
+  const [exporting, setExporting] = useState('');
+  const [error, setError] = useState('');
+  const formats = [
+    { id: 'csv', label: 'CSV' },
+    { id: 'xlsx', label: 'Excel' },
+    { id: 'pdf', label: 'PDF' },
+  ];
+
+  async function exportFile(format) {
+    setExporting(format);
+    setError('');
+    try {
+      await downloadAdminExport(entity, format, token, filters);
+    } catch (requestError) {
+      setError(getErrorMessage(requestError));
+    } finally {
+      setExporting('');
+    }
+  }
+
+  return (
+    <div className="adm-export-controls">
+      {formats.map((format) => (
+        <button
+          type="button"
+          className="adm-export-button"
+          key={format.id}
+          disabled={disabled || Boolean(exporting)}
+          onClick={() => exportFile(format.id)}
+        >
+          {exporting === format.id ? 'Exporting…' : `Export ${format.label}`}
+        </button>
+      ))}
+      {error && <span className="adm-export-error" role="alert">{error}</span>}
+    </div>
+  );
+}
+
 function MetricCard({ icon: Icon, label, value, detail, onClick }) {
   return <button className="adm-metric-card" onClick={onClick}><span className="adm-metric-icon"><Icon size={18} /></span><span className="adm-metric-label">{label}</span><strong>{value}</strong><span className="adm-metric-detail">{detail}</span><ArrowRight size={15} className="adm-metric-arrow" /></button>;
 }
@@ -289,6 +328,10 @@ function StudentPage({ resource, query, onQuery, onAdd, onEdit, onDeactivate, on
   const [grade, setGrade] = useState('all');
   const [section, setSection] = useState('all');
   const [page, setPage] = useState(1);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [uploadSuccess, setUploadSuccess] = useState('');
+  const uploadInputRef = useRef(null);
   const grades = [...new Set(resource.data.map((record) => record.class_grade).filter(Boolean))].sort();
   const sections = [...new Set(resource.data.map((record) => record.section).filter(Boolean))].sort();
   const rows = resource.data.filter((record) => {
@@ -296,9 +339,62 @@ function StudentPage({ resource, query, onQuery, onAdd, onEdit, onDeactivate, on
     return search.includes(query.toLowerCase()) && (grade === 'all' || record.class_grade === grade) && (section === 'all' || record.section === section);
   });
   const visible = rows.slice((page - 1) * pageSize, page * pageSize);
+
+  async function handleUpload(event) {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = '';
+    if (!file) return;
+
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    if (!['xlsx', 'xls', 'csv'].includes(extension || '')) {
+      setUploadError('Choose an Excel (.xlsx, .xls) or CSV (.csv) file.');
+      setUploadSuccess('');
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadError('');
+    setUploadSuccess('');
+    try {
+      const result = await onUpload(file);
+      setUploadSuccess(result.detail || `Successfully processed ${result.total_processed} students.`);
+    } catch (error) {
+      setUploadError(getErrorMessage(error));
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
   return (
     <>
-      <PageHeading title="Student directory" description={previewMode ? 'Student records are not connected in this frontend-only preview.' : 'Manage school student records. Changes are saved through the existing school API.'} action={!previewMode && <Button onClick={onAdd}><Plus size={16} /> Add student</Button>} />
+      <PageHeading
+        title="Student directory"
+        
+        action={!previewMode && (
+          <div className="adm-heading-actions">
+            <input
+              ref={uploadInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              onChange={handleUpload}
+              hidden
+              aria-label="Choose student spreadsheet"
+            />
+            <Button
+              variant="outline"
+              disabled={isUploading || resource.loading}
+              onClick={() => uploadInputRef.current?.click()}
+            >
+              <Upload size={15} />
+              {isUploading ? 'Uploading…' : 'Upload'}
+            </Button>
+            <Button onClick={onAdd}><Plus size={16} /> Add student</Button>
+          </div>
+        )}
+      />
+      {!previewMode && <p className="adm-upload-help"></p>}
+      {uploadError && <p className="adm-upload-feedback is-error" role="alert">{uploadError}</p>}
+      {uploadSuccess && <p className="adm-upload-feedback is-success" role="status">{uploadSuccess}</p>}
       <TableCard title="Students" count={resource.loading ? '…' : resource.data.length} description="Student profile records" controls={<><SearchBox value={query} onChange={(value) => { onQuery(value); setPage(1); }} placeholder="Search students" /><FilterSelect label="Filter by class" value={grade} onChange={(value) => { setGrade(value); setPage(1); }} options={[{ value: 'all', label: 'All classes' }, ...grades.map((value) => ({ value, label: value }))]} /><FilterSelect label="Filter by section" value={section} onChange={(value) => { setSection(value); setPage(1); }} options={[{ value: 'all', label: 'All sections' }, ...sections.map((value) => ({ value, label: value }))]} />{!previewMode && <IconButton label="Refresh students" onClick={onRefresh}><ArrowDownToLine size={16} /></IconButton>}</>}>
         {resource.loading ? <LoadingPanel /> : resource.error ? <ErrorPanel error={resource.error} onRetry={onRetry} /> : rows.length === 0 ? <EmptyState icon={Users} title={resource.data.length ? 'No matching student records.' : 'No student records available yet.'} description={resource.data.length ? 'Try another search or filter.' : previewMode ? 'This read-only preview does not load student records.' : 'When student records are available for this school, they will appear here.'} action={!previewMode && !resource.data.length && <Button variant="outline" onClick={onAdd}><Plus size={15} /> Add student</Button>} /> : <><div className="adm-table-scroll"><table><thead><tr><th>Student</th><th>Student ID</th><th>Class</th><th>Admission no.</th><th>Contact</th><th>Account</th><th>Actions</th></tr></thead><tbody>{visible.map((student) => <tr key={student.user_id}><td><div className="adm-person"><Avatar name={displayName(student)} /><strong>{displayName(student)}</strong></div></td><td className="adm-id">{student.user_id}</td><td>{[student.class_grade, student.section].filter(Boolean).join(' · ') || 'Not assigned'}</td><td>{student.admission_number || '—'}</td><td>{student.registered_phone || '—'}</td><td><Status active={student.is_active}>{student.is_active ? 'Active' : 'Inactive'}</Status></td><td><div className="adm-row-actions"><IconButton label={`Edit ${displayName(student)}`} onClick={() => onEdit(student)}><Pencil size={15} /></IconButton><IconButton label={student.is_active ? `Deactivate ${displayName(student)}` : `Reactivate ${displayName(student)}`} onClick={() => onDeactivate(student)}><UserRound size={15} /></IconButton></div></td></tr>)}</tbody></table></div><Pagination count={rows.length} page={page} onChange={setPage} /></>}
       </TableCard>
@@ -306,7 +402,7 @@ function StudentPage({ resource, query, onQuery, onAdd, onEdit, onDeactivate, on
   );
 }
 
-function TeacherPage({ resource, query, onQuery, onAdd, onRetry, onRefresh, previewMode }) {
+function TeacherPage({ resource, query, onQuery, onAdd, onRetry, onRefresh, previewMode, token }) {
   const [subject, setSubject] = useState('all');
   const [page, setPage] = useState(1);
   const subjects = [...new Set(resource.data.map((record) => record.subject).filter(Boolean))].sort();
@@ -314,10 +410,199 @@ function TeacherPage({ resource, query, onQuery, onAdd, onRetry, onRefresh, prev
   const visible = rows.slice((page - 1) * pageSize, page * pageSize);
   return (
     <>
-      <PageHeading title="Teachers" description={previewMode ? 'Teacher records are not connected in this frontend-only preview.' : 'Review the teaching team connected to your school.'} action={!previewMode && <Button onClick={onAdd}><Plus size={16} /> Add teacher</Button>} />
-      <TableCard title="Teaching team" count={resource.loading ? '…' : resource.data.length} description="Teacher profile records" controls={<><SearchBox value={query} onChange={(value) => { onQuery(value); setPage(1); }} placeholder="Search teachers" /><FilterSelect label="Filter by subject" value={subject} onChange={(value) => { setSubject(value); setPage(1); }} options={[{ value: 'all', label: 'All subjects' }, ...subjects.map((value) => ({ value, label: value }))]} />{!previewMode && <IconButton label="Refresh teachers" onClick={onRefresh}><ArrowDownToLine size={16} /></IconButton>}</>}>
-        {resource.loading ? <LoadingPanel /> : resource.error ? <ErrorPanel error={resource.error} onRetry={onRetry} /> : rows.length === 0 ? <EmptyState icon={UserRoundCheck} title={resource.data.length ? 'No matching teacher records.' : 'No teacher records available yet.'} description={resource.data.length ? 'Try another search or filter.' : previewMode ? 'This read-only preview does not load teacher records.' : 'When teacher records are available for this school, they will appear here.'} action={!previewMode && !resource.data.length && <Button variant="outline" onClick={onAdd}><Plus size={15} /> Add teacher</Button>} /> : <><div className="adm-table-scroll"><table><thead><tr><th>Teacher</th><th>Staff ID</th><th>Subject</th><th>Class assignment</th><th>Contact</th><th>Account</th></tr></thead><tbody>{visible.map((teacher) => <tr key={teacher.user_id}><td><div className="adm-person"><Avatar name={displayName(teacher)} /><strong>{displayName(teacher)}</strong></div></td><td className="adm-id">{teacher.employee_id || teacher.user_id}</td><td>{teacher.subject || '—'}</td><td>{teacher.class_teacher_of || '—'}</td><td>{teacher.registered_phone || '—'}</td><td><Status active={teacher.is_active}>{teacher.is_active ? 'Active' : 'Inactive'}</Status></td></tr>)}</tbody></table></div><Pagination count={rows.length} page={page} onChange={setPage} /></>}
+      <PageHeading title="Faculty Directory" description={previewMode ? 'Teacher records are not connected in this frontend-only preview.' : 'Review the teaching team connected to your school.'} action={!previewMode && <Button onClick={onAdd}><Plus size={16} /> Onboard teacher</Button>} />
+      <TableCard title="Faculty Directory" count={resource.loading ? '…' : resource.data.length} description="Teacher profile records" controls={<><SearchBox value={query} onChange={(value) => { onQuery(value); setPage(1); }} placeholder="Search faculty" /><FilterSelect label="Filter by subject" value={subject} onChange={(value) => { setSubject(value); setPage(1); }} options={[{ value: 'all', label: 'All subjects' }, ...subjects.map((value) => ({ value, label: value }))]} />{!previewMode && <><ExportButtons entity="teachers" token={token} disabled={resource.loading} /><IconButton label="Refresh faculty" onClick={onRefresh}><ArrowDownToLine size={16} /></IconButton></>}</>}>
+        {resource.loading ? <LoadingPanel /> : resource.error ? <ErrorPanel error={resource.error} onRetry={onRetry} /> : rows.length === 0 ? <EmptyState icon={UserRoundCheck} title={resource.data.length ? 'No matching faculty records.' : 'No faculty records available yet.'} description={resource.data.length ? 'Try another search or filter.' : previewMode ? 'This read-only preview does not load teacher records.' : 'When teacher records are available for this school, they will appear here.'} action={!previewMode && !resource.data.length && <Button variant="outline" onClick={onAdd}><Plus size={15} /> Onboard teacher</Button>} /> : <><div className="adm-table-scroll"><table><thead><tr><th>Teacher ID</th><th>Employee ID</th><th>Teacher Name</th><th>Subject</th><th>Qualification</th><th>Class Teacher</th><th>Phone</th><th>Joining Date</th><th>Status</th></tr></thead><tbody>{visible.map((teacher) => <tr key={teacher.user_id}><td className="adm-id">{teacher.user_id}</td><td className="adm-id">{teacher.employee_id || '—'}</td><td><div className="adm-person"><Avatar name={displayName(teacher)} /><strong>{displayName(teacher)}</strong></div></td><td>{teacher.subject || '—'}</td><td>{teacher.qualification || '—'}</td><td>{teacher.class_teacher_of || '—'}</td><td>{teacher.registered_phone || '—'}</td><td>{displayDate(teacher.joining_date)}</td><td><Status active={teacher.is_active}>{teacher.is_active ? 'Active' : 'Inactive'}</Status></td></tr>)}</tbody></table></div><Pagination count={rows.length} page={page} onChange={setPage} /></>}
       </TableCard>
+    </>
+  );
+}
+
+const attendanceStatuses = [
+  { id: 'PRESENT', label: 'Present', color: 'present' },
+  { id: 'ABSENT', label: 'Absent', color: 'absent' },
+  { id: 'MEDICAL', label: 'Medical', color: 'medical' },
+];
+
+function AdminAttendancePage({ token, stats, statsLoading, statsError, previewMode }) {
+  const [classGrade, setClassGrade] = useState('');
+  const [section, setSection] = useState('all');
+  const [date, setDate] = useState(() => {
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  });
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const classRows = Array.isArray(stats?.class_breakdown) ? stats.class_breakdown : emptyRecords;
+  const grades = [...new Set(classRows.map((item) => item.class_grade).filter(Boolean))];
+  const sections = [...new Set(classRows
+    .filter((item) => item.class_grade === classGrade && item.section)
+    .map((item) => item.section))];
+  const markedCount = students.filter((student) => attendanceStatuses.some((status) => status.id === student.status)).length;
+  const presentCount = students.filter((student) => student.status === 'PRESENT').length;
+  const absentCount = students.filter((student) => student.status === 'ABSENT').length;
+  const medicalCount = students.filter((student) => student.status === 'MEDICAL').length;
+  const presentPercentage = students.length ? Math.round((presentCount / students.length) * 100) : 0;
+
+  async function loadRollCall() {
+    if (!classGrade) {
+      setError('Select a class before loading the roll call.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const params = new URLSearchParams({
+        class_grade: classGrade,
+        section: section === 'all' ? '' : section,
+        date,
+      });
+      const result = await adminRequest(`${adminEndpoints.classAttendance}?${params}`, token);
+      if (!Array.isArray(result?.students)) {
+        throw new Error('The server returned an invalid attendance response.');
+      }
+      setStudents(result.students.map((student) => ({
+        ...student,
+        status: student.status === 'LATE' ? 'PRESENT' : student.status,
+      })));
+    } catch (requestError) {
+      setStudents([]);
+      setError(getErrorMessage(requestError));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function saveAttendance() {
+    const records = students
+      .filter((student) => attendanceStatuses.some((status) => status.id === student.status))
+      .map(({ student_id, status, remarks }) => ({ student_id, status, remarks }));
+    if (!records.length) {
+      setError('Mark attendance for at least one student before saving.');
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+    setSuccess('');
+    try {
+      const result = await adminRequest(adminEndpoints.classAttendance, token, {
+        method: 'POST',
+        body: JSON.stringify({ date, records }),
+      });
+      setSuccess(result?.detail || 'Attendance saved.');
+    } catch (requestError) {
+      setError(getErrorMessage(requestError));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function updateStudent(studentId, updates) {
+    setStudents((current) => current.map((student) => (
+      student.student_id === studentId ? { ...student, ...updates } : student
+    )));
+  }
+
+  return (
+    <>
+      <PageHeading title="Daily Class Attendance" description="Mark attendance for a class and date." />
+      <section className="adm-card adm-attendance-controls" aria-label="Attendance filters">
+        <label className="adm-attendance-field">
+          <span>Class</span>
+          <select value={classGrade} onChange={(event) => { setClassGrade(event.target.value); setSection('all'); setStudents([]); setSuccess(''); }}>
+            <option value="">Select class</option>
+            {grades.map((grade) => <option key={grade} value={grade}>{grade}</option>)}
+          </select>
+        </label>
+        <label className="adm-attendance-field">
+          <span>Section</span>
+          <select value={section} onChange={(event) => { setSection(event.target.value); setStudents([]); setSuccess(''); }} disabled={!classGrade}>
+            <option value="all">All sections</option>
+            {sections.map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+        </label>
+        <label className="adm-attendance-field">
+          <span>Date</span>
+          <input type="date" value={date} onChange={(event) => { setDate(event.target.value); setStudents([]); setSuccess(''); }} />
+        </label>
+        <Button type="button" disabled={loading || previewMode || !classGrade} onClick={loadRollCall}>
+          {loading ? 'Loading…' : 'Load roll call'}
+        </Button>
+        {!previewMode && <ExportButtons entity="attendance" token={token} filters={{ class_grade: classGrade, section: section === 'all' ? '' : section, date }} disabled={!classGrade || !date} />}
+      </section>
+
+      {error && <div className="adm-attendance-feedback is-error" role="alert"><CircleAlert size={15} />{error}</div>}
+      {success && <div className="adm-attendance-feedback is-success" role="status"><Check size={15} />{success}</div>}
+
+      <div className="adm-attendance-grid">
+        <section className="adm-card adm-attendance-roster">
+          <div className="adm-card-heading">
+            <div><h2>Class roll call</h2><p>{students.length ? `${students.length} students · ${date}` : 'Select a class and load its students.'}</p></div>
+            {students.length > 0 && <span className="adm-count">{markedCount}/{students.length} marked</span>}
+          </div>
+          {previewMode
+            ? <EmptyState icon={ClipboardCheck} title="Attendance is unavailable in preview." description="Sign in to load and mark school attendance." />
+            : statsLoading
+              ? <LoadingPanel label="Loading class list…" />
+              : statsError
+                ? <ErrorPanel error={statsError} />
+                : !grades.length
+                  ? <EmptyState icon={ClipboardCheck} title="No classes available." description="Class lists appear when student records include class and section details." />
+                  : loading
+                    ? <LoadingPanel label="Loading class roll call…" />
+                    : students.length === 0
+                      ? <EmptyState icon={ClipboardCheck} title="No roll call loaded." description="Choose a class and date, then load the roll call." />
+                      : <>
+                        <div className="adm-table-scroll">
+                          <table className="adm-attendance-table">
+                            <thead><tr><th>Student ID</th><th>Roll No.</th><th>Student Name</th><th>Status</th><th>Remarks</th></tr></thead>
+                            <tbody>{students.map((student) => (
+                              <tr key={student.student_id}>
+                                <td className="adm-id">{student.student_id}</td>
+                                <td>{student.roll_number || '—'}</td>
+                                <td>{student.name || 'Name not provided'}</td>
+                                <td>
+                                  <div className="adm-attendance-statuses" role="group" aria-label={`Attendance status for ${student.name}`}>
+                                    {attendanceStatuses.map((status) => (
+                                      <button
+                                        type="button"
+                                        key={status.id}
+                                        className={`adm-attendance-status status-${status.color}${student.status === status.id ? ' is-selected' : ''}`}
+                                        aria-pressed={student.status === status.id}
+                                        onClick={() => updateStudent(student.student_id, { status: status.id })}
+                                      >
+                                        {status.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </td>
+                                <td><input className="adm-attendance-remarks" value={student.remarks || ''} aria-label={`Remarks for ${student.name}`} onChange={(event) => updateStudent(student.student_id, { remarks: event.target.value })} /></td>
+                              </tr>
+                            ))}</tbody>
+                          </table>
+                        </div>
+                        <div className="adm-attendance-save"><Button type="button" disabled={saving || !markedCount} onClick={saveAttendance}>{saving ? 'Saving…' : 'Save attendance'}</Button></div>
+                      </>}
+        </section>
+
+        <aside className="adm-card adm-attendance-summary">
+          <div className="adm-card-heading"><div><h2>Attendance summary</h2><p>{date}</p></div></div>
+          <div className="adm-attendance-ring" style={{ '--attendance-value': `${presentPercentage}%` }}>
+            <div><strong>{students.length ? `${presentPercentage}%` : '—'}</strong><span>Present</span></div>
+          </div>
+          <div className="adm-attendance-counts">
+            <div className="status-present"><span>Present</span><strong>{students.length ? presentCount : '—'}</strong></div>
+            <div className="status-absent"><span>Absent</span><strong>{students.length ? absentCount : '—'}</strong></div>
+            <div className="status-medical"><span>Medical</span><strong>{students.length ? medicalCount : '—'}</strong></div>
+          </div>
+        </aside>
+      </div>
     </>
   );
 }
@@ -529,6 +814,22 @@ export default function AdminDashboard({ onLogout, previewMode = false }) {
     }
   }
 
+  async function uploadStudents(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const result = await adminRequest(adminEndpoints.bulkEnroll, auth.token, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!Number.isInteger(result?.total_processed)) {
+      throw new Error('The server returned an invalid student import response.');
+    }
+    loadResource('students');
+    refreshDashboard();
+    setNotice(result.detail || `Imported ${result.total_processed} student records.`);
+    return result;
+  }
+
   async function submitTeacher(values) {
     setMutating(true);
     try {
@@ -592,11 +893,12 @@ export default function AdminDashboard({ onLogout, previewMode = false }) {
           <div className="adm-content-heading"><span className="adm-breadcrumb-dot" />{current[0]}</div>
           {notice && <div className="adm-toast" role="status"><Check size={15} />{notice}<IconButton label="Dismiss" onClick={() => setNotice(null)}><X size={15} /></IconButton></div>}
           {active === 'dashboard' && <DashboardPage stats={stats} statsLoading={statsLoading} statsError={statsError} notices={dashboardNotices} noticesLoading={dashboardNoticesLoading} noticesError={dashboardNoticesError} onNavigate={navTo} onRefresh={refreshDashboard} profile={auth.profile} previewMode={previewMode} />}
-          {active === 'students' && <StudentPage resource={resources.students} query={query} onQuery={setQuery} onAdd={() => setDialog({ kind: 'student', record: null })} onEdit={(record) => setDialog({ kind: 'student', record })} onDeactivate={(record) => { setConfirmError(''); setConfirmStudent(record); }} onRetry={() => loadResource('students')} onRefresh={() => loadResource('students')} previewMode={previewMode} />}
-          {active === 'teachers' && <TeacherPage resource={resources.teachers} query={query} onQuery={setQuery} onAdd={() => setDialog({ kind: 'teacher' })} onRetry={() => loadResource('teachers')} onRefresh={() => loadResource('teachers')} previewMode={previewMode} />}
+          {active === 'students' && <StudentPage resource={resources.students} query={query} onQuery={setQuery} onAdd={() => setDialog({ kind: 'student', record: null })} onEdit={(record) => setDialog({ kind: 'student', record })} onDeactivate={(record) => { setConfirmError(''); setConfirmStudent(record); }} onRetry={() => loadResource('students')} onRefresh={() => loadResource('students')} onUpload={uploadStudents} previewMode={previewMode} />}
+          {active === 'teachers' && <TeacherPage resource={resources.teachers} query={query} onQuery={setQuery} onAdd={() => setDialog({ kind: 'teacher' })} onRetry={() => loadResource('teachers')} onRefresh={() => loadResource('teachers')} previewMode={previewMode} token={auth.token} />}
           {active === 'classes' && <ClassesPage stats={stats} statsLoading={statsLoading} statsError={statsError} onRetry={refreshDashboard} query={query} onQuery={setQuery} previewMode={previewMode} />}
           {active === 'notices' && <NoticesPage resource={resources.notices} query={query} onQuery={setQuery} onAdd={() => setDialog({ kind: 'notice' })} onRetry={() => loadResource('notices')} onRefresh={() => loadResource('notices')} previewMode={previewMode} />}
-          {['timetable', 'attendance', 'examinations', 'reports', 'fees', 'calendar'].includes(active) && <NotConnectedPage active={active} />}
+          {active === 'attendance' && <AdminAttendancePage token={auth.token} stats={stats} statsLoading={statsLoading} statsError={statsError} previewMode={previewMode} />}
+          {['timetable', 'examinations', 'reports', 'fees', 'calendar'].includes(active) && <NotConnectedPage active={active} />}
           {active === 'settings' && <SettingsPage profile={auth.profile} previewMode={previewMode} />}
           <footer className="adm-footer">EduSure <span>·</span> Admin workspace</footer>
         </div>

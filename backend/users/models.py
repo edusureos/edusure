@@ -130,6 +130,7 @@ class Attendance(models.Model):
         PRESENT = 'PRESENT', 'Present'
         ABSENT = 'ABSENT', 'Absent'
         LATE = 'LATE', 'Late'
+        MEDICAL = 'MEDICAL', 'Medical'
 
     school_id = models.IntegerField(db_index=True)
     student = models.ForeignKey(

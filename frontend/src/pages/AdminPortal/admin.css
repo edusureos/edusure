@@ -588,6 +588,44 @@ button:disabled {
   line-height: 1.55;
 }
 
+.adm-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.adm-upload-help {
+  margin: -10px 0 13px;
+  color: #7a8796;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.adm-upload-feedback {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 13px;
+  padding: 9px 11px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.adm-upload-feedback.is-error {
+  border-color: #efd9d5;
+  background: #fff8f6;
+  color: #92574b;
+}
+
+.adm-upload-feedback.is-success {
+  border-color: #cfe4d1;
+  background: #f0f7f0;
+  color: #356c3a;
+}
+
 .adm-button {
   display: inline-flex;
   min-height: 36px;
@@ -1832,5 +1870,416 @@ button:disabled {
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: .01ms !important;
+  }
+}
+
+.adm-app {
+  background: var(--clay-canvas);
+}
+
+.adm-sidebar {
+  border-right-color: transparent;
+  background: var(--clay-surface);
+  box-shadow: 8px 0 20px rgb(148 163 184 / 18%);
+}
+
+.adm-sidebar-brand {
+  border-bottom-color: rgb(255 255 255 / 82%);
+}
+
+.adm-topbar {
+  border-bottom-color: rgb(255 255 255 / 82%);
+  background: rgb(244 247 251 / 92%);
+  box-shadow: 0 6px 16px rgb(148 163 184 / 14%);
+}
+
+.adm-workspace,
+.adm-card,
+.adm-metric-card,
+.adm-shortcut-card,
+.adm-modal,
+.adm-auth-card {
+  --clay-card-bg: var(--clay-surface);
+  --clay-edge-start: rgb(46 125 50 / 24%);
+  --clay-edge-end: rgb(121 103 181 / 21%);
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--clay-card-bg), var(--clay-card-bg)) padding-box,
+    linear-gradient(135deg, var(--clay-edge-start), rgb(255 255 255 / 92%) 48%, var(--clay-edge-end)) border-box;
+  box-shadow: var(--clay-shadow-raised), inset 1px 1px 0 rgb(255 255 255 / 72%);
+}
+
+.adm-metric-card:nth-child(3n + 1) {
+  --clay-card-bg: #F0F7EF;
+  --clay-edge-start: #A9D6AE;
+  --clay-edge-end: #D7C8EB;
+}
+
+.adm-metric-card:nth-child(3n + 2) {
+  --clay-card-bg: #F5F0FA;
+  --clay-edge-start: #CDBAE5;
+  --clay-edge-end: #B9DABF;
+}
+
+.adm-metric-card:nth-child(3n) {
+  --clay-card-bg: #EFF5FB;
+  --clay-edge-start: #B6D2EE;
+  --clay-edge-end: #CFBDE4;
+}
+
+.adm-shortcut-card:nth-child(3n + 1) {
+  --clay-card-bg: #EFF5FB;
+  --clay-edge-start: #B6D2EE;
+  --clay-edge-end: #CFBDE4;
+}
+
+.adm-shortcut-card:nth-child(3n + 2) {
+  --clay-card-bg: #F0F7EF;
+  --clay-edge-start: #A9D6AE;
+  --clay-edge-end: #D7C8EB;
+}
+
+.adm-shortcut-card:nth-child(3n) {
+  --clay-card-bg: #FBF1F5;
+  --clay-edge-start: #E5BFCF;
+  --clay-edge-end: #C9C0E5;
+}
+
+.adm-card,
+.adm-metric-card,
+.adm-auth-card {
+  border-radius: 1.35rem;
+}
+
+.adm-metric-card:hover,
+.adm-shortcut-card:hover {
+  box-shadow: 11px 11px 20px rgb(148 163 184 / 24%), -8px -8px 18px rgb(255 255 255 / 98%);
+}
+
+.adm-search,
+.adm-field input,
+.adm-field select,
+.adm-field textarea {
+  border-color: rgb(255 255 255 / 94%);
+  background: var(--clay-canvas);
+  box-shadow: var(--clay-shadow-inset);
+}
+
+.adm-button:not(.adm-button-outline):not(.adm-button-danger) {
+  box-shadow: 4px 4px 9px rgb(10 25 47 / 18%), -3px -3px 8px rgb(255 255 255 / 72%);
+}
+
+.adm-button-outline {
+  border-color: rgb(255 255 255 / 96%);
+  background: var(--clay-surface);
+  box-shadow: var(--clay-shadow-inset);
+}
+
+.adm-auth-page {
+  background: var(--clay-canvas);
+}
+
+.adm-export-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.adm-export-button {
+  min-height: 29px;
+  padding: 0 7px;
+  border: 1px solid #e1e7ed;
+  border-radius: 7px;
+  background: #fff;
+  color: #607087;
+  cursor: pointer;
+  font-size: 8px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.adm-export-button:hover:not(:disabled) {
+  border-color: #b8d5bc;
+  background: #f3f8f3;
+  color: var(--adm-green-dark);
+}
+
+.adm-export-button:disabled {
+  cursor: wait;
+  opacity: .6;
+}
+
+.adm-export-error {
+  flex: 1 0 100%;
+  color: #a33939;
+  font-size: 9px;
+}
+
+.adm-attendance-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: end;
+  gap: 11px;
+  margin-bottom: 14px;
+  padding: 14px;
+}
+
+.adm-attendance-field {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  color: #758296;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.adm-attendance-field select,
+.adm-attendance-field input,
+.adm-attendance-remarks {
+  width: 100%;
+  min-width: 0;
+  height: 35px;
+  padding: 0 9px;
+  border: 1px solid #e1e7ed;
+  border-radius: 9px;
+  background: #fff;
+  color: #36475a;
+  font-size: 10px;
+}
+
+.adm-attendance-field select:disabled {
+  color: #9aa5b2;
+  cursor: not-allowed;
+}
+
+.adm-attendance-controls > .adm-button {
+  min-height: 35px;
+  white-space: nowrap;
+}
+
+.adm-attendance-controls > .adm-export-controls {
+  grid-column: 1 / -1;
+  justify-self: end;
+}
+
+.adm-attendance-feedback {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 12px;
+  padding: 9px 11px;
+  border: 1px solid #dcebdd;
+  border-radius: 9px;
+  background: #f2f8f2;
+  color: #315d37;
+  font-size: 10px;
+}
+
+.adm-attendance-feedback.is-error {
+  border-color: #f1d0d0;
+  background: #fff5f5;
+  color: #a33939;
+}
+
+.adm-attendance-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(220px, .7fr);
+  align-items: start;
+  gap: 14px;
+}
+
+.adm-attendance-roster {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.adm-attendance-roster > .adm-card-heading,
+.adm-attendance-summary > .adm-card-heading {
+  padding: 15px 16px;
+}
+
+.adm-attendance-roster .adm-empty-state {
+  min-height: 190px;
+}
+
+.adm-attendance-table {
+  min-width: 760px;
+}
+
+.adm-attendance-table td {
+  height: 62px;
+}
+
+.adm-attendance-table td:nth-child(3) {
+  color: #36475a;
+  font-weight: 600;
+}
+
+.adm-attendance-statuses {
+  display: flex;
+  gap: 4px;
+}
+
+.adm-attendance-status {
+  padding: 5px 7px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #657487;
+  cursor: pointer;
+  font-size: 8px;
+  font-weight: 700;
+  transition: box-shadow 140ms ease, filter 140ms ease;
+}
+
+.adm-attendance-status:hover {
+  filter: saturate(1.15);
+}
+
+.adm-attendance-status.status-present {
+  background: #eaf5ec;
+  color: #28743a;
+}
+
+.adm-attendance-status.status-absent {
+  background: #fbebec;
+  color: #b13d41;
+}
+
+.adm-attendance-status.status-medical {
+  background: #edf3fb;
+  color: #386eaa;
+}
+
+.adm-attendance-status.is-selected {
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
+.adm-attendance-remarks {
+  height: 30px;
+  font-size: 9px;
+}
+
+.adm-attendance-save {
+  display: flex;
+  justify-content: center;
+  padding: 12px 16px 15px;
+  border-top: 1px solid #edf0f3;
+}
+
+.adm-attendance-summary {
+  padding-bottom: 14px;
+}
+
+.adm-attendance-ring {
+  display: grid;
+  width: 132px;
+  height: 132px;
+  place-items: center;
+  margin: 9px auto 16px;
+  border-radius: 50%;
+  background: conic-gradient(var(--adm-green) var(--attendance-value), #e8eee9 0);
+}
+
+.adm-attendance-ring > div {
+  display: grid;
+  width: 104px;
+  height: 104px;
+  align-content: center;
+  justify-items: center;
+  gap: 3px;
+  border-radius: 50%;
+  background: var(--clay-surface, #fff);
+}
+
+.adm-attendance-ring strong {
+  color: var(--adm-navy);
+  font-family: var(--font-heading);
+  font-size: 23px;
+  font-weight: 800;
+}
+
+.adm-attendance-ring span {
+  color: #8290a0;
+  font-size: 9px;
+}
+
+.adm-attendance-counts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  padding: 0 13px;
+}
+
+.adm-attendance-counts > div {
+  display: grid;
+  min-height: 55px;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+  border: 1px solid #edf0f3;
+  border-radius: 10px;
+  background: #fbfcfb;
+}
+
+.adm-attendance-counts span {
+  color: #718094;
+  font-size: 8px;
+}
+
+.adm-attendance-counts strong {
+  color: #27394b;
+  font-size: 14px;
+}
+
+.adm-attendance-counts .status-present strong {
+  color: #28743a;
+}
+
+.adm-attendance-counts .status-absent strong {
+  color: #b13d41;
+}
+
+.adm-attendance-counts .status-medical strong {
+  color: #386eaa;
+}
+
+@media (max-width: 900px) {
+  .adm-attendance-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .adm-attendance-summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(160px, .8fr);
+    align-items: center;
+  }
+
+  .adm-attendance-summary > .adm-card-heading {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .adm-attendance-ring {
+    margin: 8px auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .adm-attendance-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .adm-attendance-controls > .adm-button {
+    grid-column: 1 / -1;
+  }
+
+  .adm-attendance-controls > .adm-export-controls {
+    justify-self: start;
+  }
+
+  .adm-attendance-summary {
+    display: block;
   }
 }

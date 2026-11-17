@@ -75,12 +75,12 @@ export default function App() {
   }
 
   return (
-    <main className="min-h-screen w-full bg-white flex items-stretch">
-      <div className="w-full flex flex-col lg:flex-row min-h-screen bg-white">
+    <main className="min-h-screen w-full bg-[var(--clay-canvas)] flex items-stretch">
+      <div className="w-full flex flex-col lg:flex-row min-h-screen bg-[var(--clay-canvas)]">
         <IllustrationSide className="w-full lg:w-1/2" />
         <section
           aria-label="EduSure Login"
-          className="w-full lg:w-1/2 flex flex-col justify-center items-center px-6 sm:px-12 py-10 bg-white overflow-y-auto"
+          className="w-full lg:w-1/2 flex flex-col justify-center items-center px-6 sm:px-12 py-10 bg-[var(--clay-canvas)] overflow-y-auto"
         >
           <div className="w-full max-w-md">
             {roleError && <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{roleError}</p>}

@@ -9,12 +9,13 @@ from django.db import transaction
 from django.contrib.auth import get_user_model
 from .models import StudentProfile
 from .utils import ROLE_CODE_MAP
+from .permissions import IsSchoolAdmin
 
 User = get_user_model()
 
 class BulkStudentEnrollmentView(APIView):
     parser_classes = (MultiPartParser, FormParser)
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated, IsSchoolAdmin]
 
     @extend_schema(
         summary="Bulk enroll students via Excel/CSV file",
@@ -26,10 +27,6 @@ class BulkStudentEnrollmentView(APIView):
                         "type": "string",
                         "format": "binary",
                         "description": "Upload .xlsx or .csv file"
-                    },
-                    "school_code": {
-                        "type": "string",
-                        "default": "101"
                     }
                 },
                 "required": ["file"]
@@ -48,10 +45,16 @@ class BulkStudentEnrollmentView(APIView):
     @transaction.atomic  # Ensures either all rows are saved, or none if an error occurs
     def post(self, request):
         file = request.FILES.get('file')
-        school_code = request.data.get('school_code', '101')
+        school_id = request.user.school_id
 
         if not file:
             return Response({"detail": "Excel/CSV file is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if school_id is None:
+            return Response(
+                {"detail": "Your admin account is not associated with a school."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        school_code = str(school_id)
 
         # Parse Excel or CSV
         try:

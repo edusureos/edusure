@@ -83,7 +83,7 @@ export default function LoginForm({ onLogin }) {
   };
 
   return (
-    <div className="w-full max-w-[460px] mx-auto px-4 sm:px-0 py-6 sm:py-8 bg-white">
+    <div className="clay-login-card w-full max-w-[460px] mx-auto">
       <div className="mb-8">
         <h1 className="text-3xl sm:text-4xl xl:text-[2.6rem] font-extrabold text-[#0A192F] tracking-tight font-heading leading-tight">
           Teachers Teach. <br />

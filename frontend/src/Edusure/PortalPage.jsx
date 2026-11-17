@@ -19,9 +19,10 @@ import {
 import EduSureLogo from './EduSureLogo';
 import ProgressReportGraph from './ProgressReportGraph';
 import EmptyState from './EmptyState';
+import AttendancePage from './AttendancePage';
+import { fetchAttendance } from './attendance-api';
 
 const EMPTY = {
-  attendance: 'No attendance recorded yet. Records will appear here once classes are marked.',
   performance: 'No analytics available yet. Data will appear here once activity is recorded.',
   homework: 'No assignments recorded yet. Homework will appear here once it is assigned.',
   fees: 'No fee records available yet. Payments will appear here once they are posted.',
@@ -35,12 +36,16 @@ const EMPTY = {
 };
 
 export default function PortalPage({ onLogout, userId, profile = {} }) {
+  const [activeSection, setActiveSection] = useState('dashboard');
   const [profileData, setProfileData] = useState(profile);
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [attendanceData, setAttendanceData] = useState(null);
+  const [isAttendanceLoading, setIsAttendanceLoading] = useState(true);
+  const [attendanceError, setAttendanceError] = useState('');
 
   const dashboardButtons = [
     { id: 'attendance', label: 'Attendance', icon: UserCheck },
@@ -77,6 +82,21 @@ export default function PortalPage({ onLogout, userId, profile = {} }) {
     fetchUserProfile();
   }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetchAttendance(new Date(), controller.signal)
+      .then(setAttendanceData)
+      .catch((requestError) => {
+        if (requestError.name !== 'AbortError') setAttendanceError(requestError.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsAttendanceLoading(false);
+      });
+
+    return () => controller.abort();
+  }, []);
+
   const todayLabel = useMemo(
     () =>
       new Date().toLocaleDateString('en-IN', {
@@ -89,6 +109,27 @@ export default function PortalPage({ onLogout, userId, profile = {} }) {
   );
 
   const signedInLabel = profileData.username || userId?.trim() || 'Signed-in account';
+  const studentName = typeof profileData.studentName === 'string' && profileData.studentName.trim()
+    ? profileData.studentName.trim()
+    : 'Student';
+  const attendanceSummary = useMemo(() => {
+    if (!attendanceData) return null;
+    const counts = attendanceData.records.reduce(
+      (result, record) => {
+        const status = record.status.toUpperCase();
+        if (status === 'PRESENT' || status === 'LATE') result.attended += 1;
+        else if (status === 'HALF_DAY') result.attended += 0.5;
+        return result;
+      },
+      { attended: 0 },
+    );
+    return {
+      percentage: attendanceData.totalDays > 0
+        ? Number(((counts.attended / attendanceData.totalDays) * 100).toFixed(2))
+        : null,
+      recordCount: attendanceData.records.length,
+    };
+  }, [attendanceData]);
   const profileFields = [
     { label: 'Student Name', value: profileData.studentName },
     { label: 'Class', value: profileData.class },
@@ -111,7 +152,6 @@ export default function PortalPage({ onLogout, userId, profile = {} }) {
   }, []);
 
   const modalCopy = {
-    attendance: EMPTY.attendance,
     timetable: EMPTY.timetable,
     'fee-submission': EMPTY.fees,
     'fee-record': EMPTY.fees,
@@ -120,6 +160,12 @@ export default function PortalPage({ onLogout, userId, profile = {} }) {
     'academic-calendar': EMPTY.calendar,
     notices: EMPTY.notices,
   };
+
+  function openAttendance() {
+    setActiveSection('attendance');
+    setActiveModal(null);
+    setIsDashboardOpen(false);
+  }
 
   return (
     <div className="min-h-screen w-full bg-slate-50/60 flex flex-col text-slate-800 antialiased font-sans relative selection:bg-emerald-500/15 selection:text-emerald-900">
@@ -174,6 +220,9 @@ export default function PortalPage({ onLogout, userId, profile = {} }) {
         </div>
       </header>
 
+      {activeSection === 'attendance' ? (
+        <AttendancePage onBack={() => setActiveSection('dashboard')} />
+      ) : (
       <main className="relative z-10 flex-1 w-full max-w-7xl mx-auto px-4 py-6 sm:px-6 sm:py-8 lg:px-8 space-y-6">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -184,23 +233,18 @@ export default function PortalPage({ onLogout, userId, profile = {} }) {
           </div>
         </div>
 
-        <div className="relative isolate overflow-hidden w-full bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+        <div className="relative isolate overflow-hidden w-full bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-5 clay-tone-mint">
           <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-[#2E7D32] to-emerald-300" />
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl border border-emerald-100 bg-emerald-50 text-[#2E7D32] flex items-center justify-center shrink-0">
               <User className="w-7 h-7" />
             </div>
             <div className="space-y-1">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                Signed-in account
-              </p>
-              <h2 className="text-xl sm:text-2xl font-extrabold text-[#0A192F] font-heading tracking-tight leading-tight break-all">
-                {signedInLabel}
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0A192F] font-heading tracking-tight leading-tight break-words">
+                Hello, {studentName}!
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 font-medium">
-                {profileData.studentName
-                  ? `${profileData.studentName}${profileData.class ? ` • Class ${profileData.class}` : ''}`
-                  : EMPTY.profile}
+                {profileData.class ? `Class ${profileData.class}` : EMPTY.profile}
               </p>
             </div>
           </div>
@@ -253,47 +297,37 @@ export default function PortalPage({ onLogout, userId, profile = {} }) {
           <EmptyState icon={Search} message={EMPTY.search} />
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          <MetricCard
-            label="Attendance"
-            accent="from-[#2E7D32] to-emerald-400"
-            onClick={() => setActiveModal('attendance')}
-            action="View Attendance Log"
-            icon={UserCheck}
-            iconClass="text-[#2E7D32]"
-            detail={EMPTY.attendance}
-          />
-          <MetricCard
-            label="Performance"
-            accent="from-sky-500 to-blue-600"
-            onClick={() => setActiveModal('progress-report')}
-            action="Inspect Grade Sheet"
-            icon={TrendingUp}
-            iconClass="text-sky-700"
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="col-span-2 sm:col-span-1">
+            <AttendanceMetricCard
+              onClick={openAttendance}
+              summary={attendanceSummary}
+              isLoading={isAttendanceLoading}
+              error={attendanceError}
+            />
+          </div>
+          <QuickCard
+            title="Performance"
             detail={EMPTY.performance}
+            icon={TrendingUp}
+            onClick={() => setActiveModal('progress-report')}
           />
-          <MetricCard
-            label="Homework"
-            accent="from-indigo-500 to-purple-600"
-            onClick={() => setActiveModal('homework')}
-            action="View Assignment Queue"
-            icon={BookOpen}
-            iconClass="text-indigo-600"
+          <QuickCard
+            title="Homework"
             detail={EMPTY.homework}
+            icon={BookOpen}
+            onClick={() => setActiveModal('homework')}
           />
-          <MetricCard
-            label="Fee Status"
-            accent="from-emerald-600 to-teal-500"
-            onClick={() => setActiveModal('fee-record')}
-            action="View Fee Record"
-            icon={CreditCard}
-            iconClass="text-emerald-700"
+          <QuickCard
+            title="Fee Status"
             detail={EMPTY.fees}
+            icon={CreditCard}
+            onClick={() => setActiveModal('fee-record')}
           />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-6 bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm flex flex-col">
+          <div className="lg:col-span-6 bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm flex flex-col clay-tone-blue">
             <SectionHeading
               icon={CalendarDays}
               iconWrap="bg-sky-50 text-sky-700 border-sky-100"
@@ -315,7 +349,7 @@ export default function PortalPage({ onLogout, userId, profile = {} }) {
             </div>
           </div>
 
-          <div className="lg:col-span-6 bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm flex flex-col">
+          <div className="lg:col-span-6 bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm flex flex-col clay-tone-lilac">
             <SectionHeading
               icon={LayoutDashboard}
               iconWrap="bg-emerald-50 text-[#2E7D32] border-emerald-100"
@@ -323,43 +357,36 @@ export default function PortalPage({ onLogout, userId, profile = {} }) {
               subtitle="Direct access to core academic records"
               badge="Quick links"
             />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <QuickCard
                 title="My Timetable"
                 detail="No schedule recorded yet"
                 icon={CalendarDays}
-                tone="blue"
                 onClick={() => setActiveModal('timetable')}
-                action="Open Schedule"
               />
               <QuickCard
                 title="My Progress Report"
                 detail="No report generated yet"
                 icon={TrendingUp}
-                tone="emerald"
                 onClick={() => setActiveModal('progress-report')}
-                action="View Analytics"
               />
               <QuickCard
                 title="Fee Record"
                 detail="No receipts posted yet"
                 icon={CreditCard}
-                tone="indigo"
                 onClick={() => setActiveModal('fee-record')}
-                action="View Record"
               />
               <QuickCard
                 title="Academic Calendar"
                 detail="No dates published yet"
                 icon={Calendar}
-                tone="amber"
                 onClick={() => setActiveModal('academic-calendar')}
-                action="Browse Year"
               />
             </div>
           </div>
         </div>
       </main>
+      )}
 
       {(isDashboardOpen || isProfileOpen) && (
         <div
@@ -400,14 +427,21 @@ export default function PortalPage({ onLogout, userId, profile = {} }) {
         <nav className="p-4 flex-1 overflow-y-auto space-y-1.5" aria-label="Academic sections">
           {dashboardButtons.map((btn) => {
             const Icon = btn.icon;
-            const isActive = activeModal === btn.id;
+            const isActive = btn.id === 'attendance'
+              ? activeSection === 'attendance'
+              : activeSection === 'dashboard' && activeModal === btn.id;
             return (
               <button
                 key={btn.id}
                 type="button"
                 onClick={() => {
-                  setActiveModal(btn.id);
-                  setIsDashboardOpen(false);
+                  if (btn.id === 'attendance') {
+                    openAttendance();
+                  } else {
+                    setActiveSection('dashboard');
+                    setActiveModal(btn.id);
+                    setIsDashboardOpen(false);
+                  }
                 }}
                 aria-current={isActive ? 'page' : undefined}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs sm:text-sm font-semibold transition-colors text-left cursor-pointer ${
@@ -553,87 +587,79 @@ function SectionHeading({ icon: Icon, iconWrap, title, subtitle, badge }) {
   );
 }
 
-function MetricCard({ label, accent, onClick, action, icon: Icon, iconClass, detail }) {
+function AttendanceMetricCard({ onClick, summary, isLoading, error }) {
+  const percentage = summary?.percentage;
+  const radius = 30;
+  const circumference = 2 * Math.PI * radius;
+  const progress = percentage === null || percentage === undefined
+    ? 0
+    : (Math.min(percentage, 100) / 100) * circumference;
+  const detail = isLoading
+    ? "Loading this month's records"
+    : error
+      ? 'Attendance data unavailable'
+      : summary?.recordCount
+        ? `${summary.recordCount} record${summary.recordCount === 1 ? '' : 's'} this month`
+        : 'No records for this month';
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group relative bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-slate-300 transition-all duration-200 text-left cursor-pointer overflow-hidden flex flex-col justify-between min-h-[188px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30"
+      title={error || 'View your monthly attendance'}
+      className="group relative w-full bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-slate-300 transition-all duration-200 text-left cursor-pointer overflow-hidden flex flex-col justify-between min-h-[188px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30 clay-tone-mint"
     >
-      <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${accent}`} />
-      <div>
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-            {label}
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2 py-1 text-[10px] font-semibold text-slate-500 border border-slate-100 whitespace-nowrap">
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-            No records
+      <div className="absolute top-0 left-0 right-0 h-1 bg-[#2E7D32]" />
+      <div className="flex items-center gap-4 py-1">
+        <div
+          className="relative w-[76px] h-[76px] shrink-0"
+          role="img"
+          aria-label={percentage === null || percentage === undefined
+            ? 'Attendance percentage unavailable'
+            : `${percentage.toFixed(2)}% attendance this month`}
+        >
+          <svg viewBox="0 0 72 72" className="w-full h-full -rotate-90">
+            <circle cx="36" cy="36" r={radius} fill="none" stroke="#E2E8F0" strokeWidth="6" />
+            <circle
+              cx="36"
+              cy="36"
+              r={radius}
+              fill="none"
+              stroke="#0A192F"
+              strokeWidth="6"
+              strokeLinecap="round"
+              strokeDasharray={`${progress} ${circumference}`}
+            />
+          </svg>
+          <span className="absolute inset-0 flex items-center justify-center text-[13px] font-extrabold text-[#0A192F]">
+            {percentage === null || percentage === undefined ? '—' : `${percentage.toFixed(2)}%`}
           </span>
         </div>
-        <div className="flex items-start justify-between gap-3 mt-5">
-          <p className="text-sm font-medium text-slate-600 leading-relaxed">{detail}</p>
-          <div className={`w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 ${iconClass}`}>
-            <Icon className="w-5 h-5" />
-          </div>
+        <div className="min-w-0">
+          <h3 className="text-lg font-bold text-[#0A192F] font-heading">Attendance</h3>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">{detail}</p>
         </div>
       </div>
       <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-slate-500 group-hover:text-slate-900">
-        <span>{action}</span>
+        <span>View Attendance</span>
         <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-1 transition-transform" />
       </div>
     </button>
   );
 }
 
-const QUICK_TONES = {
-  blue: {
-    icon: 'bg-blue-50 text-blue-700 border-blue-100',
-    hover: 'hover:border-blue-300 hover:bg-blue-50/20',
-    title: 'group-hover:text-blue-700',
-    action: 'group-hover:text-blue-700',
-  },
-  emerald: {
-    icon: 'bg-emerald-50 text-[#2E7D32] border-emerald-100',
-    hover: 'hover:border-emerald-300 hover:bg-emerald-50/20',
-    title: 'group-hover:text-[#2E7D32]',
-    action: 'group-hover:text-[#2E7D32]',
-  },
-  indigo: {
-    icon: 'bg-indigo-50 text-indigo-700 border-indigo-100',
-    hover: 'hover:border-indigo-300 hover:bg-indigo-50/20',
-    title: 'group-hover:text-indigo-700',
-    action: 'group-hover:text-indigo-700',
-  },
-  amber: {
-    icon: 'bg-amber-50 text-amber-700 border-amber-100',
-    hover: 'hover:border-amber-300 hover:bg-amber-50/20',
-    title: 'group-hover:text-amber-800',
-    action: 'group-hover:text-amber-800',
-  },
-};
-
-function QuickCard({ title, detail, icon: Icon, tone, onClick, action }) {
-  const styles = QUICK_TONES[tone];
+function QuickCard({ title, detail, icon: Icon, onClick }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`p-4 rounded-2xl border border-slate-200/80 hover:shadow-md hover:-translate-y-0.5 bg-white transition-all duration-200 text-left cursor-pointer group flex flex-col justify-between focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30 ${styles.hover}`}
+      aria-label={`${title}. ${detail}`}
+      className="group min-h-[112px] rounded-xl px-2 py-3 flex flex-col items-center justify-center gap-2 text-center transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30 cursor-pointer"
     >
-      <div>
-        <div className={`w-9 h-9 rounded-xl border flex items-center justify-center shadow-2xs mb-3 ${styles.icon}`}>
-          <Icon className="w-4.5 h-4.5" />
-        </div>
-        <h3 className={`text-sm font-bold text-[#0A192F] transition-colors font-heading ${styles.title}`}>
-          {title}
-        </h3>
-        <p className="text-xs text-slate-500 mt-1">{detail}</p>
-      </div>
-      <div className={`mt-4 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-600 ${styles.action}`}>
-        <span>{action}</span>
-        <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-1 transition-all" />
-      </div>
+      <Icon className="w-10 h-10 text-[#0A192F] stroke-[1.7] transition-colors group-hover:text-[#2E7D32]" />
+      <span className="text-xs sm:text-[13px] font-semibold text-slate-700 transition-colors group-hover:text-[#0A192F]">
+        {title}
+      </span>
     </button>
   );
 }

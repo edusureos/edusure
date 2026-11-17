@@ -631,7 +631,7 @@ class AdminDatabaseExportView(APIView):
 
             headers = [
                 'Teacher ID', 'Employee ID', 'Full Name', 'Subject',
-                'Qualification', 'Class Teacher Of', 'Contact', 'Status'
+                'Qualification', 'Class Teacher Of', 'Contact', 'Joining Date', 'Status'
             ]
             rows = [
                 [
@@ -642,6 +642,7 @@ class AdminDatabaseExportView(APIView):
                     tp.qualification,
                     tp.class_teacher_of,
                     _get_contact(tp.user, tp),
+                    tp.joining_date.isoformat() if tp.joining_date else '',
                     'Active' if tp.user.is_active else 'Inactive',
                 ]
                 for tp in qs
