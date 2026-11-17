@@ -15,6 +15,7 @@ from .views import (
     ClassAttendanceView,
     StudentAttendanceSummaryView,
     AdminDatabaseExportView,
+    AdminSyncedBulkFilesView,
 
 )
 from .bulk_views import BulkStudentEnrollmentView
@@ -44,5 +45,7 @@ urlpatterns = [
     path('attendance/class/', ClassAttendanceView.as_view(), name='class-attendance'),
     path('attendance/summary/', StudentAttendanceSummaryView.as_view(), name='student-attendance-summary'),
     path('admin/export/<str:entity>/<str:file_format>/', AdminDatabaseExportView.as_view(), name='admin-database-export',),
+    path('admin/bulk-files/', AdminSyncedBulkFilesView.as_view(), name='admin-bulk-files'),
+
 
 ]

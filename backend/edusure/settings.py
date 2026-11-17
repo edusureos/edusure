@@ -43,7 +43,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist', 
 
     # Local Apps
-    'users',
+    'users.apps.UsersConfig',
     'academics',
     'finance',
 ]
