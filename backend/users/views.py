@@ -1,5 +1,10 @@
 import random
 import re
+import io
+import os
+import zipfile
+from django.http import FileResponse, HttpResponse
+from .signals import find_file_for_class, get_school_bulk_dir, list_school_bulk_files
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -281,9 +286,17 @@ class AdminStudentDetailView(APIView):
         serializer = AdminStudentListSerializer(profile, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
+            user_fields = []
+            if 'first_name' in request.data:
+                student_user.first_name = profile.first_name
+                user_fields.append('first_name')
+            if 'last_name' in request.data:
+                student_user.last_name = profile.last_name
+                user_fields.append('last_name')
+            if user_fields:
+                student_user.save(update_fields=user_fields)
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class AdminTeacherListCreateView(APIView):
     permission_classes = [IsAuthenticated, IsSchoolAdmin]
@@ -591,14 +604,58 @@ class AdminDatabaseExportView(APIView):
                 {"detail": "Invalid format. Use 'csv', 'xlsx', or 'pdf'."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
         if entity == 'students':
+            class_grade = request.query_params.get('class_grade')
+            section = request.query_params.get('section')
+            requested_filename = request.query_params.get('filename')
+
+            # Serve the live-synced original bulk file(s) when exporting xlsx/csv
+            if file_format in ('xlsx', 'csv') and not section:
+                synced_files = list_school_bulk_files(school_id)
+                if synced_files:
+                    target_file = None
+
+                    if requested_filename:
+                        safe_name = os.path.basename(requested_filename)
+                        for f in synced_files:
+                            if os.path.basename(f) == safe_name:
+                                target_file = f
+                                break
+                    elif class_grade:
+                        target_file, _ = find_file_for_class(synced_files, class_grade)
+                    elif len(synced_files) == 1:
+                        target_file = synced_files[0]
+
+                    if target_file and os.path.exists(target_file):
+                        mime = (
+                            'text/csv; charset=utf-8'
+                            if target_file.endswith('.csv')
+                            else 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                        )
+                        return FileResponse(
+                            open(target_file, 'rb'),
+                            as_attachment=True,
+                            filename=os.path.basename(target_file),
+                            content_type=mime,
+                        )
+
+                    if len(synced_files) > 1 and not class_grade:
+                        zip_buffer = io.BytesIO()
+                        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+                            for f in synced_files:
+                                zf.write(f, arcname=os.path.basename(f))
+                        zip_buffer.seek(0)
+                        response = HttpResponse(zip_buffer.getvalue(), content_type='application/zip')
+                        response['Content-Disposition'] = (
+                            f'attachment; filename="edusure_students_{school_id}_{today_str}.zip"'
+                        )
+                        return response
+
+            # Fallback DB export (when no bulk file exists or section filter is active)
             qs = StudentProfile.objects.select_related('user').filter(
                 user__school_id=school_id
             ).order_by('class_grade', 'section', 'roll_number', 'first_name')
 
-            class_grade = request.query_params.get('class_grade')
-            section = request.query_params.get('section')
             if class_grade:
                 qs = qs.filter(class_grade=class_grade)
             if section:
@@ -623,6 +680,7 @@ class AdminDatabaseExportView(APIView):
             ]
             title = f"EduSure School ({school_id}) - Student Directory"
             filename = f"edusure_students_{school_id}_{today_str}"
+
 
         elif entity == 'teachers':
             qs = TeacherProfile.objects.select_related('user').filter(
@@ -706,3 +764,40 @@ class AdminDatabaseExportView(APIView):
             headers,
             rows,
         )    
+
+
+class AdminSyncedBulkFilesView(APIView):
+    """List or download live-synced original Excel/CSV files for the school."""
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
+
+    def get(self, request):
+        school_id = request.user.school_id
+        download_name = request.query_params.get('download')
+        files = list_school_bulk_files(school_id)
+
+        if download_name:
+            safe_name = os.path.basename(download_name)
+            for f in files:
+                if os.path.basename(f) == safe_name:
+                    mime = (
+                        'text/csv; charset=utf-8'
+                        if f.endswith('.csv')
+                        else 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    )
+                    return FileResponse(
+                        open(f, 'rb'),
+                        as_attachment=True,
+                        filename=safe_name,
+                        content_type=mime,
+                    )
+            return Response({"detail": "File not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        file_list = [
+            {
+                "filename": os.path.basename(f),
+                "size_kb": round(os.path.getsize(f) / 1024, 1),
+                "last_updated": datetime.datetime.fromtimestamp(os.path.getmtime(f)).isoformat(),
+            }
+            for f in files
+        ]
+        return Response({"school_id": school_id, "files": file_list}, status=status.HTTP_200_OK)    
