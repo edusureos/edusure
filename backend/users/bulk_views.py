@@ -5,12 +5,14 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from drf_spectacular.utils import extend_schema
-from rest_framework import permissions, status
+from rest_framework import status
 from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import StudentProfile
+from .permissions import IsSchoolAdmin
 from .signals import pause_excel_sync
 from .utils import ROLE_CODE_MAP
 
@@ -35,7 +37,7 @@ def _clean_int_str(val):
 
 class BulkStudentEnrollmentView(APIView):
     parser_classes = (MultiPartParser, FormParser)
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     @extend_schema(
         summary="Bulk enroll students via Excel/CSV file (supports any filename, multiple files & multi-sheet workbooks)",
@@ -70,7 +72,8 @@ class BulkStudentEnrollmentView(APIView):
     @transaction.atomic
     def post(self, request):
         file = request.FILES.get("file")
-        school_code = str(request.data.get("school_code", "101")).strip()
+        admin_school_id = getattr(request.user, "school_id", None)
+        school_code = str(admin_school_id or request.data.get("school_code", "101")).strip()
 
         if not file:
             return Response({"detail": "Excel/CSV file is required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -78,14 +81,13 @@ class BulkStudentEnrollmentView(APIView):
         # 1. Read all sheets if Excel (.xlsx/.xls), or single table if CSV
         try:
             if file.name.lower().endswith((".xlsx", ".xls")):
-                sheets_dict = pd.read_excel(file, sheet_name=None)  # Dict of {sheet_name: DataFrame}
+                sheets_dict = pd.read_excel(file, sheet_name=None)
             else:
                 sheets_dict = {"Sheet1": pd.read_csv(file)}
         except Exception as e:
             return Response({"detail": f"File parsing error: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
         # 2. Save file locally under media/bulk_uploads/school_<school_code>/<original_filename>
-        # Doosri class ki files delete nahi hongi; sirf same filename upload hone par wahi file update hogi.
         media_root = settings.MEDIA_ROOT or os.path.join(settings.BASE_DIR, "media")
         school_bulk_dir = os.path.join(media_root, "bulk_uploads", f"school_{school_code}")
         os.makedirs(school_bulk_dir, exist_ok=True)
@@ -94,7 +96,6 @@ class BulkStudentEnrollmentView(APIView):
         ext = os.path.splitext(safe_filename)[1].lower()
 
         if ext == ".xls":
-            # Legacy .xls ko .xlsx mein convert karke save karein taaki openpyxl edit kar sake
             base_name = os.path.splitext(safe_filename)[0]
             saved_path = os.path.join(school_bulk_dir, f"{base_name}.xlsx")
             with pd.ExcelWriter(saved_path, engine="openpyxl") as writer:
@@ -116,13 +117,11 @@ class BulkStudentEnrollmentView(APIView):
                 if df is None or df.empty:
                     continue
 
-                # Normalize column headers (case-insensitive)
                 df.columns = [str(c).strip().lower() for c in df.columns]
 
                 for index, row in df.iterrows():
                     raw_userid = _clean_int_str(row.get("userid"))
 
-                    # Strictly integer-based 10-digit ID
                     if len(raw_userid) == 10 and raw_userid.isdigit():
                         generated_id = str(int(raw_userid))
                     else:
