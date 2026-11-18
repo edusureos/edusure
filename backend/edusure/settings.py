@@ -43,9 +43,12 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist', 
 
     # Local Apps
+    # Local Apps
     'users.apps.UsersConfig',
     'academics',
     'finance',
+    'payments',
+
 ]
 
 MIDDLEWARE = [
@@ -176,3 +179,23 @@ FIREBASE_CRED_PATH = BASE_DIR / 'firebase-adminsdk.json'
 if FIREBASE_CRED_PATH.exists() and not firebase_admin._apps:
     cred = credentials.Certificate(str(FIREBASE_CRED_PATH))
     firebase_admin.initialize_app(cred)
+
+# 6. Optional Payment Gateway (falls back to Mock Mode if empty)
+RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID', '')
+RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET', '')
+
+
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=2),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'PLA',
+    'VERSION': '1.0.0',
+    'SWAGGER_UI_SETTINGS': {
+        'persistAuthorization': True,
+    },
+}
