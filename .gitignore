@@ -7,3 +7,7 @@ __pycache__/
 .env
 firebase-adminsdk.json
 media/
+dist/
+!package.json
+!package-lock.json
+node_modules/

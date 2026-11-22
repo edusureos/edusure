@@ -7,7 +7,6 @@ import {
   SlidersHorizontal, Upload, UserRound, UserRoundCheck, Users, X,
 } from 'lucide-react';
 import './admin.css';
-import { adminEndpoints, adminRequest, downloadAdminExport } from './adminApi';
 import { adminEndpoints, adminRequest, downloadAdminExport, downloadBulkFile } from './adminApi';
 
 const emptyRecords = Object.freeze([]);

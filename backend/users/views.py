@@ -1,3 +1,4 @@
+import calendar
 import datetime
 import io
 import os
@@ -333,7 +334,7 @@ def _normalize_class(val):
 
 
 class NoticeListCreateView(APIView):
-    """GET: Students/Teachers/Admins view school notices | POST: Admin creates notice"""
+    """GET: Students/Teachers/Admins view school notices | POST: Admin & Teacher create notice"""
 
     permission_classes = [IsAuthenticated]
 
@@ -367,16 +368,96 @@ class NoticeListCreateView(APIView):
         serializer = NoticeSerializer(notices, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    @extend_schema(summary="Publish a new notice (Admin only)", request=NoticeSerializer, responses={201: NoticeSerializer})
+    @extend_schema(
+        summary="Publish a new notice (Admin & Teacher)",
+        request=NoticeSerializer,
+        responses={201: NoticeSerializer},
+    )
     def post(self, request):
-        if request.user.role not in [User.Role.SCHOOL_ADMIN, User.Role.SUPER_ADMIN]:
-            return Response({"detail": "Only School Admins can publish notices."}, status=status.HTTP_403_FORBIDDEN)
+        allowed_roles = [User.Role.SCHOOL_ADMIN, User.Role.SUPER_ADMIN, User.Role.TEACHER]
+        if request.user.role not in allowed_roles:
+            return Response(
+                {"detail": "Only School Admins and Teachers can publish notices."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         serializer = NoticeSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(school_id=request.user.school_id, created_by=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class NoticeDetailView(APIView):
+    """Retrieve, update (PUT/PATCH), or delete (DELETE) a notice."""
+
+    permission_classes = [IsAuthenticated]
+
+    def _get_notice_or_error(self, request, pk):
+        user = request.user
+        allowed_roles = [User.Role.SCHOOL_ADMIN, User.Role.SUPER_ADMIN, User.Role.TEACHER]
+
+        if user.role not in allowed_roles:
+            return None, Response(
+                {"detail": "Only School Admins and Teachers can edit or delete notices."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if user.role == User.Role.SUPER_ADMIN and not user.school_id:
+            notice = get_object_or_404(Notice, pk=pk)
+        else:
+            notice = get_object_or_404(Notice, pk=pk, school_id=user.school_id)
+
+        if user.role == User.Role.TEACHER and notice.created_by_id != user.id:
+            return None, Response(
+                {"detail": "You can only edit or delete notices you created."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        return notice, None
+
+    @extend_schema(summary="Get notice details", responses={200: NoticeSerializer})
+    def get(self, request, pk):
+        notice, error_response = self._get_notice_or_error(request, pk)
+        if error_response:
+            return error_response
+        return Response(NoticeSerializer(notice).data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="Update a notice (Admin & Teacher)",
+        request=NoticeSerializer,
+        responses={200: NoticeSerializer},
+    )
+    def put(self, request, pk):
+        notice, error_response = self._get_notice_or_error(request, pk)
+        if error_response:
+            return error_response
+
+        serializer = NoticeSerializer(notice, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @extend_schema(
+        summary="Partially update a notice (Admin & Teacher)",
+        request=NoticeSerializer,
+        responses={200: NoticeSerializer},
+    )
+    def patch(self, request, pk):
+        return self.put(request, pk)
+
+    @extend_schema(summary="Delete a notice (Admin & Teacher)")
+    def delete(self, request, pk):
+        notice, error_response = self._get_notice_or_error(request, pk)
+        if error_response:
+            return error_response
+
+        notice.delete()
+        return Response(
+            {"detail": "Notice deleted successfully."},
+            status=status.HTTP_200_OK,
+        )
 
 
 class ClassAttendanceView(APIView):
@@ -529,6 +610,7 @@ class StudentAttendanceSummaryView(APIView):
         present_days = qs.filter(status=Attendance.Status.PRESENT).count()
         late_days = qs.filter(status=Attendance.Status.LATE).count()
         absent_days = qs.filter(status=Attendance.Status.ABSENT).count()
+        medical_days = qs.filter(status=Attendance.Status.MEDICAL).count()
 
         effective_present = present_days + late_days
         percentage = round((effective_present / total_days) * 100, 1) if total_days > 0 else 0.0
@@ -541,6 +623,7 @@ class StudentAttendanceSummaryView(APIView):
                 "present_days": present_days,
                 "late_days": late_days,
                 "absent_days": absent_days,
+                "medical_days": medical_days,
                 "attendance_percentage": percentage,
                 "records": serializer.data,
             },
@@ -632,7 +715,6 @@ class AdminDatabaseExportView(APIView):
             section = request.query_params.get('section')
             requested_filename = request.query_params.get('filename')
 
-            # Serve the live-synced original bulk file(s) when exporting xlsx/csv
             if file_format in ('xlsx', 'csv') and not section:
                 synced_files = list_school_bulk_files(school_id)
                 if synced_files:
@@ -676,7 +758,6 @@ class AdminDatabaseExportView(APIView):
                         )
                         return response
 
-            # Fallback DB export
             qs = StudentProfile.objects.select_related('user').filter(
                 user__school_id=school_id
             ).order_by('class_grade', 'section', 'roll_number', 'first_name')
@@ -843,3 +924,259 @@ class AdminSyncedBulkFilesView(APIView):
             for f in files
         ]
         return Response({"school_id": school_id, "files": file_list}, status=status.HTTP_200_OK)
+
+
+class AdminAttendanceOverviewView(APIView):
+    """
+    1. School-wide daily Present/Absent/Medical totals.
+    2. Class-wise marking status (MARKED vs PENDING).
+    3. Low-attendance defaulters list (below threshold %).
+    """
+
+    permission_classes = [IsAuthenticated, IsTeacherOrSchoolAdmin]
+
+    @extend_schema(
+        summary="School-wide daily attendance status & defaulter list",
+        parameters=[
+            OpenApiParameter(name="date", type=str, required=False, description="YYYY-MM-DD (default today)"),
+            OpenApiParameter(name="threshold", type=int, required=False, description="Min attendance % (default 75)"),
+        ],
+    )
+    def get(self, request):
+        date_str = (request.query_params.get("date") or "").strip()
+
+        try:
+            target_date = datetime.date.fromisoformat(date_str) if date_str else datetime.date.today()
+        except ValueError:
+            return Response({"detail": "Invalid date format. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            threshold = int(request.query_params.get("threshold") or 75)
+        except ValueError:
+            return Response({"detail": "threshold must be an integer."}, status=status.HTTP_400_BAD_REQUEST)
+
+        school_id = request.user.school_id
+
+        class_groups = (
+            StudentProfile.objects.filter(user__school_id=school_id, user__is_active=True)
+            .values("class_grade", "section")
+            .annotate(total_students=Count("id"))
+            .order_by("class_grade", "section")
+        )
+
+        daily_stats = (
+            Attendance.objects.filter(school_id=school_id, date=target_date)
+            .values("student__student_profile__class_grade", "student__student_profile__section")
+            .annotate(
+                marked_count=Count("id"),
+                present_count=Count("id", filter=Q(status__in=[Attendance.Status.PRESENT, Attendance.Status.LATE])),
+                absent_count=Count("id", filter=Q(status=Attendance.Status.ABSENT)),
+                medical_count=Count("id", filter=Q(status=Attendance.Status.MEDICAL)),
+            )
+        )
+        stats_map = {
+            (row["student__student_profile__class_grade"], row["student__student_profile__section"]): row
+            for row in daily_stats
+        }
+
+        class_status = []
+        total_present = total_absent = total_medical = total_active = 0
+
+        for grp in class_groups:
+            key = (grp["class_grade"], grp["section"])
+            st = stats_map.get(key, {})
+            marked = st.get("marked_count", 0)
+            present = st.get("present_count", 0)
+            absent = st.get("absent_count", 0)
+            medical = st.get("medical_count", 0)
+
+            total_active += grp["total_students"]
+            total_present += present
+            total_absent += absent
+            total_medical += medical
+
+            class_status.append({
+                "class_grade": grp["class_grade"],
+                "section": grp["section"],
+                "total_students": grp["total_students"],
+                "marked_count": marked,
+                "present": present,
+                "absent": absent,
+                "medical": medical,
+                "is_marked": marked > 0,
+            })
+
+        student_totals = (
+            Attendance.objects.filter(school_id=school_id, student__is_active=True)
+            .values(
+                "student__username",
+                "student__student_profile__first_name",
+                "student__student_profile__last_name",
+                "student__student_profile__class_grade",
+                "student__student_profile__section",
+                "student__student_profile__registered_phone",
+            )
+            .annotate(
+                total_days=Count("id"),
+                present_days=Count("id", filter=Q(status__in=[Attendance.Status.PRESENT, Attendance.Status.LATE])),
+            )
+        )
+
+        defaulters = []
+        for s in student_totals:
+            if s["total_days"] == 0:
+                continue
+            pct = round((s["present_days"] / s["total_days"]) * 100, 1)
+            if pct < threshold:
+                defaulters.append({
+                    "student_id": s["student__username"],
+                    "name": f"{s['student__student_profile__first_name'] or ''} {s['student__student_profile__last_name'] or ''}".strip(),
+                    "class_grade": s["student__student_profile__class_grade"],
+                    "section": s["student__student_profile__section"],
+                    "phone": s["student__student_profile__registered_phone"] or "",
+                    "present_days": s["present_days"],
+                    "total_days": s["total_days"],
+                    "percentage": pct,
+                })
+
+        defaulters.sort(key=lambda x: x["percentage"])
+
+        return Response(
+            {
+                "date": target_date.isoformat(),
+                "threshold_percent": threshold,
+                "school_summary": {
+                    "total_active_students": total_active,
+                    "present": total_present,
+                    "absent": total_absent,
+                    "medical": total_medical,
+                },
+                "class_wise_status": class_status,
+                "defaulters_below_threshold": defaulters,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class MonthlyAttendanceRegisterView(APIView):
+    """
+    GET: Class & month ka 1..31 attendance register grid.
+    Optional ?file_format=csv|xlsx|pdf pass karne par direct file download hoti hai.
+    """
+
+    permission_classes = [IsAuthenticated, IsTeacherOrSchoolAdmin]
+
+    @extend_schema(
+        summary="Get monthly attendance register or export as CSV/Excel/PDF",
+        parameters=[
+            OpenApiParameter(name="class_grade", type=str, required=True),
+            OpenApiParameter(name="section", type=str, required=False),
+            OpenApiParameter(name="month", type=int, required=False),
+            OpenApiParameter(name="year", type=int, required=False),
+            OpenApiParameter(name="file_format", type=str, required=False, description="csv, xlsx, or pdf"),
+        ],
+    )
+    def get(self, request):
+        school_id = request.user.school_id
+        class_grade = (request.query_params.get("class_grade") or "").strip()
+        section = (request.query_params.get("section") or "").strip()
+        file_format = (request.query_params.get("file_format") or "").strip().lower()
+
+        if not class_grade:
+            return Response(
+                {"detail": "class_grade query parameter is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        today = datetime.date.today()
+        try:
+            month = int(request.query_params.get("month") or today.month)
+            year = int(request.query_params.get("year") or today.year)
+            if not (1 <= month <= 12):
+                raise ValueError
+        except ValueError:
+            return Response({"detail": "Invalid month or year."}, status=status.HTTP_400_BAD_REQUEST)
+
+        _, num_days = calendar.monthrange(year, month)
+
+        students_qs = StudentProfile.objects.select_related("user").filter(
+            user__school_id=school_id,
+            user__is_active=True,
+            class_grade=class_grade,
+        )
+        if section:
+            students_qs = students_qs.filter(section=section)
+        students_qs = students_qs.order_by("roll_number", "first_name")
+
+        records = Attendance.objects.filter(
+            school_id=school_id,
+            date__year=year,
+            date__month=month,
+            student__in=[s.user_id for s in students_qs],
+        )
+
+        code_map = {"PRESENT": "P", "ABSENT": "A", "MEDICAL": "M", "LATE": "L"}
+        grid = {(r.student_id, r.date.day): code_map.get(r.status, r.status[0]) for r in records}
+
+        register = []
+        for sp in students_qs:
+            days = {}
+            p_cnt = a_cnt = m_cnt = 0
+            for d in range(1, num_days + 1):
+                val = grid.get((sp.user_id, d), "-")
+                days[str(d)] = val
+                if val in ("P", "L"):
+                    p_cnt += 1
+                elif val == "A":
+                    a_cnt += 1
+                elif val == "M":
+                    m_cnt += 1
+
+            marked_days = p_cnt + a_cnt + m_cnt
+            pct = round((p_cnt / marked_days) * 100, 1) if marked_days > 0 else 0.0
+
+            register.append({
+                "student_id": sp.user.username,
+                "roll_number": sp.roll_number,
+                "name": f"{sp.first_name} {sp.last_name}".strip(),
+                "days": days,
+                "present": p_cnt,
+                "absent": a_cnt,
+                "medical": m_cnt,
+                "percentage": pct,
+            })
+
+        if file_format in ("csv", "xlsx", "pdf"):
+            headers = ["Roll", "Student ID", "Name"] + [str(d) for d in range(1, num_days + 1)] + ["P", "A", "M", "%"]
+            rows = [
+                [r["roll_number"] or "", r["student_id"], r["name"]]
+                + [r["days"][str(d)] for d in range(1, num_days + 1)]
+                + [r["present"], r["absent"], r["medical"], f"{r['percentage']}%"]
+                for r in register
+            ]
+            title = f"EduSure School ({school_id}) - Class {class_grade}{section} Register ({month:02d}/{year})"
+            filename = f"edusure_attendance_register_{school_id}_class_{class_grade}{section}_{year}_{month:02d}"
+
+            if file_format == "csv":
+                return export_to_csv(filename, headers, rows)
+            if file_format == "xlsx":
+                return export_to_excel(filename, "Register", headers, rows)
+            return export_to_pdf(
+                filename,
+                title,
+                f"Generated on {today.isoformat()} | Total Students: {len(rows)}",
+                headers,
+                rows,
+            )
+
+        return Response(
+            {
+                "class_grade": class_grade,
+                "section": section,
+                "month": month,
+                "year": year,
+                "days_in_month": num_days,
+                "students": register,
+            },
+            status=status.HTTP_200_OK,
+        )
