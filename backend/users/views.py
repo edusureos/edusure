@@ -37,6 +37,7 @@ from .serializers import (
     StudentAttendanceRecordSerializer,
     UserProfileSerializer,
     VerifyOTPAndResetPasswordSerializer,
+    generate_temp_password,
 )
 from .signals import find_file_for_class, list_school_bulk_files
 
@@ -1408,3 +1409,29 @@ class MonthlyAttendanceRegisterView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+
+class AdminResetStudentPasswordView(APIView):
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
+
+    def post(self, request, username):
+        qs = User.objects.filter(username=username, role=User.Role.STUDENT)
+        if request.user.role == User.Role.SCHOOL_ADMIN and request.user.school_id is not None:
+            qs = qs.filter(school_id=request.user.school_id)
+
+        student = get_object_or_404(qs)
+        temp_password = generate_temp_password()
+        student.set_password(temp_password)
+        student.requires_password_change = True
+        student.save(update_fields=["password", "requires_password_change"])
+
+        return Response(
+            {
+                "detail": "Temporary password reset successfully.",
+                "user_id": student.username,
+                "name": f"{student.first_name} {student.last_name}".strip(),
+                "temporary_password": temp_password,
+            },
+            status=status.HTTP_200_OK,
+        )    

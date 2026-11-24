@@ -19,6 +19,7 @@ from .views import (
     AdminDatabaseExportView,
     AdminSyncedBulkFilesView,
     AdminAttendanceOverviewView,
+    AdminResetStudentPasswordView,
     MonthlyAttendanceRegisterView,
 
 )
@@ -54,5 +55,10 @@ urlpatterns = [
     path('admin/export/<str:entity>/<str:file_format>/', AdminDatabaseExportView.as_view(), name='admin-database-export',),
     path('admin/bulk-files/', AdminSyncedBulkFilesView.as_view(), name='admin-bulk-files'),
 
+    path(
+        "admin/students/<str:username>/reset-password/",
+        AdminResetStudentPasswordView.as_view(),
+        name="admin-student-reset-password",
+    ),
 
 ]
