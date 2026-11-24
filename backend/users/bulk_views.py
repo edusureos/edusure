@@ -11,9 +11,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import generate_temp_password
 from .models import StudentProfile
 from .permissions import IsSchoolAdmin
+from .serializers import generate_temp_password
 from .signals import pause_excel_sync
 from .utils import ROLE_CODE_MAP
 
@@ -36,12 +36,19 @@ def _clean_int_str(val):
     return s
 
 
+def _clean_str(val):
+    if val is None or (isinstance(val, float) and pd.isna(val)):
+        return ""
+    s = str(val).strip()
+    return "" if s.lower() in ("nan", "none", "null") else s
+
+
 class BulkStudentEnrollmentView(APIView):
     parser_classes = (MultiPartParser, FormParser)
     permission_classes = [IsAuthenticated, IsSchoolAdmin]
 
     @extend_schema(
-        summary="Bulk enroll students via Excel/CSV file (supports any filename, multiple files & multi-sheet workbooks)",
+        summary="Bulk enroll students via Excel/CSV file (preserves existing credentials, updates profiles/roll numbers, and generates credentials only for new students)",
         request={
             "multipart/form-data": {
                 "type": "object",
@@ -66,6 +73,8 @@ class BulkStudentEnrollmentView(APIView):
                     "detail": {"type": "string"},
                     "saved_file": {"type": "string"},
                     "total_processed": {"type": "integer"},
+                    "newly_created": {"type": "integer"},
+                    "updated_existing": {"type": "integer"},
                     "credentials": {"type": "array"},
                 },
             }
@@ -111,8 +120,21 @@ class BulkStudentEnrollmentView(APIView):
                     dest.write(chunk)
 
         year_suffix = datetime.datetime.now().strftime("%y")
-        prefix = f"{school_code}{ROLE_CODE_MAP['STUDENT']}{year_suffix}"
+        school_student_prefix = f"{school_code}{ROLE_CODE_MAP['STUDENT']}"
+        prefix = f"{school_student_prefix}{year_suffix}"
+
+        # Find highest existing serial number for this school & year so new students never collide
+        existing_usernames = User.objects.filter(
+            username__startswith=prefix,
+        ).values_list("username", flat=True)
+
+        max_serial = 0
+        for uname in existing_usernames:
+            if len(uname) == 10 and uname.isdigit():
+                max_serial = max(max_serial, int(uname[-4:]))
+
         processed_count = 0
+        updated_count = 0
         created_credentials = []
 
         with pause_excel_sync():
@@ -124,13 +146,6 @@ class BulkStudentEnrollmentView(APIView):
 
                 for index, row in df.iterrows():
                     raw_userid = _clean_int_str(row.get("userid"))
-
-                    if len(raw_userid) == 10 and raw_userid.isdigit():
-                        generated_id = str(int(raw_userid))
-                    else:
-                        serial_num = int(raw_userid) if raw_userid.isdigit() else (processed_count + 1)
-                        generated_id = f"{prefix}{serial_num:04d}"
-
                     mobile = _clean_int_str(row.get("mobile_number"))
 
                     dob_val = None
@@ -140,74 +155,149 @@ class BulkStudentEnrollmentView(APIView):
                         except Exception:
                             dob_val = None
 
-                    first_name = str(row.get("first_name", "")).strip()
-                    if first_name.lower() == "nan":
-                        first_name = ""
+                    first_name = _clean_str(row.get("first_name"))
+                    last_name = _clean_str(row.get("last_name"))
+                    class_grade = _clean_int_str(row.get("class")) or _clean_str(row.get("class"))
+                    section = _clean_str(row.get("section"))
+                    father_name = _clean_str(row.get("father_name"))
 
-                    last_name = str(row.get("last_name", "")).strip()
-                    if last_name.lower() == "nan":
-                        last_name = ""
-
-                    class_grade = _clean_int_str(row.get("class")) or str(row.get("class", "")).strip()
-                    if class_grade.lower() == "nan":
-                        class_grade = ""
-
-                    section = str(row.get("section", "")).strip() if pd.notnull(row.get("section")) else ""
-                    if section.lower() == "nan":
-                        section = ""
-
-                    father_name = str(row.get("father_name", "")).strip() if pd.notnull(row.get("father_name")) else ""
-                    if father_name.lower() == "nan":
-                        father_name = ""
-
-                    user, created = User.objects.update_or_create(
-                        username=generated_id,
-                        defaults={
-                            "first_name": first_name,
-                            "last_name": last_name,
-                            "role": User.Role.STUDENT,
-                            "school_id": int(school_code),
-                            "requires_password_change": True,
-                            "is_active": True,
-                        },
+                    raw_roll = (
+                        _clean_int_str(row.get("roll_number"))
+                        or _clean_int_str(row.get("roll_no"))
+                        or _clean_int_str(row.get("roll"))
                     )
+                    parsed_roll = int(raw_roll) if raw_roll.isdigit() else None
 
-                    if created:
+                    # Reject cross-school or non-student 10-digit IDs if explicitly passed in Excel
+                    if len(raw_userid) == 10 and raw_userid.isdigit():
+                        if not raw_userid.startswith(school_student_prefix):
+                            transaction.set_rollback(True)
+                            return Response(
+                                {
+                                    "detail": (
+                                        f"Sheet '{sheet_name}' row {index + 2}: User ID '{raw_userid}' "
+                                        f"does not belong to school {school_code} students."
+                                    )
+                                },
+                                status=status.HTTP_400_BAD_REQUEST,
+                            )
+
+                    # 1. Match existing student in this school (so ID & password stay untouched)
+                    existing_user = None
+                    if len(raw_userid) == 10 and raw_userid.isdigit():
+                        existing_user = User.objects.filter(
+                            username=raw_userid,
+                            role=User.Role.STUDENT,
+                            school_id=int(school_code),
+                        ).first()
+                    elif first_name and mobile:
+                        prof = (
+                            StudentProfile.objects.filter(
+                                user__school_id=int(school_code),
+                                user__role=User.Role.STUDENT,
+                                first_name__iexact=first_name,
+                                last_name__iexact=last_name,
+                                registered_phone=mobile,
+                            )
+                            .select_related("user")
+                            .first()
+                        )
+                        if prof:
+                            existing_user = prof.user
+                    elif first_name and father_name:
+                        prof_qs = StudentProfile.objects.filter(
+                            user__school_id=int(school_code),
+                            user__role=User.Role.STUDENT,
+                            first_name__iexact=first_name,
+                            last_name__iexact=last_name,
+                            father_name__iexact=father_name,
+                        ).select_related("user")
+                        if dob_val:
+                            prof_qs = prof_qs.filter(dob=dob_val)
+                        prof = prof_qs.first()
+                        if prof:
+                            existing_user = prof.user
+
+                    if existing_user:
+                        # EXISTING STUDENT: Do NOT change username, password, or requires_password_change
+                        user = existing_user
+                        generated_id = user.username
+                        update_fields = []
+                        if first_name and user.first_name != first_name:
+                            user.first_name = first_name
+                            update_fields.append("first_name")
+                        if last_name and user.last_name != last_name:
+                            user.last_name = last_name
+                            update_fields.append("last_name")
+                        if update_fields:
+                            user.save(update_fields=update_fields)
+                        updated_count += 1
+                    else:
+                        # NEW STUDENT: Generate next sequential ID & fresh temporary password
+                        if len(raw_userid) == 10 and raw_userid.isdigit():
+                            generated_id = raw_userid
+                            if generated_id.startswith(prefix):
+                                max_serial = max(max_serial, int(generated_id[-4:]))
+                        else:
+                            max_serial += 1
+                            generated_id = f"{prefix}{max_serial:04d}"
+
                         temp_password = generate_temp_password()
-                        user.set_password(temp_password)
-                        user.save()
+                        user = User.objects.create_user(
+                            username=generated_id,
+                            password=temp_password,
+                            first_name=first_name,
+                            last_name=last_name,
+                            role=User.Role.STUDENT,
+                            school_id=int(school_code),
+                            requires_password_change=True,
+                            is_active=True,
+                        )
+                        final_roll = parsed_roll if parsed_roll is not None else int(generated_id[-4:])
                         created_credentials.append(
                             {
                                 "user_id": generated_id,
                                 "name": f"{first_name} {last_name}".strip(),
                                 "class_grade": class_grade,
                                 "section": section,
-                                "roll_number": int(generated_id[-4:]) if generated_id[-4:].isdigit() else None,
+                                "roll_number": final_roll,
                                 "temporary_password": temp_password,
                             }
                         )
+
+                    existing_profile = StudentProfile.objects.filter(user=user).first()
+                    final_roll = (
+                        parsed_roll
+                        if parsed_roll is not None
+                        else (existing_profile.roll_number if existing_profile else int(generated_id[-4:]))
+                    )
 
                     StudentProfile.objects.update_or_create(
                         user=user,
                         defaults={
                             "admission_number": f"ADM-{generated_id}",
-                            "first_name": first_name,
-                            "last_name": last_name,
-                            "class_grade": class_grade,
-                            "section": section,
-                            "roll_number": int(generated_id[-4:]) if generated_id[-4:].isdigit() else None,
-                            "dob": dob_val,
-                            "father_name": father_name,
-                            "registered_phone": mobile,
+                            "first_name": first_name or (existing_profile.first_name if existing_profile else ""),
+                            "last_name": last_name or (existing_profile.last_name if existing_profile else ""),
+                            "class_grade": class_grade or (existing_profile.class_grade if existing_profile else ""),
+                            "section": section or (existing_profile.section if existing_profile else ""),
+                            "roll_number": final_roll,
+                            "dob": dob_val or (existing_profile.dob if existing_profile else None),
+                            "father_name": father_name or (existing_profile.father_name if existing_profile else ""),
+                            "registered_phone": mobile or (existing_profile.registered_phone if existing_profile else ""),
                         },
                     )
                     processed_count += 1
 
         return Response(
             {
-                "detail": f"Successfully processed {processed_count} students from '{safe_filename}'.",
+                "detail": (
+                    f"Processed {processed_count} students from '{safe_filename}' "
+                    f"({len(created_credentials)} new, {updated_count} updated)."
+                ),
                 "saved_file": saved_path,
                 "total_processed": processed_count,
+                "newly_created": len(created_credentials),
+                "updated_existing": updated_count,
                 "credentials": created_credentials,
             },
             status=status.HTTP_201_CREATED,
