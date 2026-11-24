@@ -1,6 +1,8 @@
 from django.urls import path
 from .views import (
     AdminAssignFeeInvoicesView,
+    AdminClassFeeStructureDetailView,
+    AdminClassFeeStructureListCreateView,
     AdminCollectOfflinePaymentView,
     AdminFeeStructureListCreateView,
     AdminFeeSummaryView,
@@ -21,6 +23,8 @@ urlpatterns = [
     path("admin/config/", AdminPaymentConfigView.as_view(), name="admin-payment-config"),
     path("admin/summary/", AdminFeeSummaryView.as_view(), name="admin-fee-summary"),
     path("admin/fee-structures/", AdminFeeStructureListCreateView.as_view(), name="admin-fee-structures"),
+    path("admin/class-fee-structures/", AdminClassFeeStructureListCreateView.as_view(), name="admin-class-fee-structures"),
+    path("admin/class-fee-structures/<int:pk>/", AdminClassFeeStructureDetailView.as_view(), name="admin-class-fee-structure-detail"),
     path("admin/invoices/assign/", AdminAssignFeeInvoicesView.as_view(), name="admin-assign-invoices"),
     path("admin/invoices/", AdminInvoiceListView.as_view(), name="admin-invoices"),
     path("admin/transactions/", AdminTransactionListView.as_view(), name="admin-transactions"),

@@ -1,6 +1,6 @@
 # EduSure
 
-EduSure is a responsive student-portal frontend for viewing academic information in one place. The interface includes a sign-in screen and a portal dashboard with profile details, attendance, performance, homework, fee records, events, quick links, and academic navigation.
+EduSure is a responsive student-portal frontend for viewing academic information in one place. The interface includes a sign-in screen and a portal dashboard with profile details, attendance, performance, homework, fee Submission, events, quick links, and academic navigation.
 
 > **Current project status:** EduSure's sign-in is a client-side demonstration flow. Student records and academic data are not connected to a database or an EduSure backend yet. Empty sections display explanatory messages rather than invented student data or statistics. Do not use real credentials with this prototype.
 
@@ -8,7 +8,7 @@ EduSure is a responsive student-portal frontend for viewing academic information
 
 - Responsive EduSure sign-in screen with field validation, password visibility, and a forgot-password dialog.
 - Student portal dashboard with academic overview, search, date, and notices.
-- Dashboard navigation for attendance, timetable, fee submission, progress reports, academic calendar, and notices.
+- Dashboard navigation for attendance, timetable, fee Management, progress reports, academic calendar, and notices.
 - Profile drawer with Student Name, Class, Date of Birth, Father's Name, and Mobile Number fields. Missing information displays **Not available yet**.
 - Empty states for academic information that has not been connected or published.
 - Keyboard-accessible dialogs and navigation, with reduced-motion support.

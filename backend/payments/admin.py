@@ -1,5 +1,12 @@
 from django.contrib import admin
-from .models import FeeStructure, PaymentTransaction, SchoolPaymentConfig, StudentFeeInvoice
+from .models import (
+    ClassFeeCategory,
+    ClassFeeStructure,
+    FeeStructure,
+    PaymentTransaction,
+    SchoolPaymentConfig,
+    StudentFeeInvoice,
+)
 
 
 @admin.register(SchoolPaymentConfig)
@@ -11,6 +18,20 @@ class SchoolPaymentConfigAdmin(admin.ModelAdmin):
 class FeeStructureAdmin(admin.ModelAdmin):
     list_display = ("title", "school_id", "class_grade", "amount", "due_date", "is_active")
     list_filter = ("school_id", "academic_year", "is_active")
+
+
+@admin.register(ClassFeeStructure)
+class ClassFeeStructureAdmin(admin.ModelAdmin):
+    list_display = ("id", "school_id", "class_grade", "section", "is_active", "updated_at")
+    list_filter = ("school_id", "is_active")
+    search_fields = ("class_grade", "section")
+
+
+@admin.register(ClassFeeCategory)
+class ClassFeeCategoryAdmin(admin.ModelAdmin):
+    list_display = ("structure", "fee_type_title", "amount", "position")
+    list_filter = ("structure__school_id",)
+    search_fields = ("fee_type_title",)
 
 
 @admin.register(StudentFeeInvoice)

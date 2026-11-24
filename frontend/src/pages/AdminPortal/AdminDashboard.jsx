@@ -7,8 +7,13 @@ import {
   SlidersHorizontal, Upload, UserRound, UserRoundCheck, Users, X,
 } from 'lucide-react';
 import './admin.css';
+<<<<<<< Updated upstream
 import { adminEndpoints, adminRequest, downloadAdminExport, downloadBulkFile } from './adminApi';
 
+=======
+import { adminEndpoints, adminRequest, downloadAdminExport } from './adminApi';
+import FeeManagementPage from './FeeManagementPage';
+>>>>>>> Stashed changes
 const emptyRecords = Object.freeze([]);
 
 const navigation = [
@@ -35,7 +40,7 @@ const pageCopy = {
   attendance: ['Daily Class Attendance', 'Mark attendance for a class and date.'],
   examinations: ['Examinations', 'Exam schedules will be available when examination data is connected.'],
   reports: ['Results & Reports', 'Academic results will be available when reporting data is connected.'],
-  fees: ['Fee Management', 'Fee records will be available when finance data is connected.'],
+  fees: ['Fee Management', 'Review and manage the fee information connected to your school.'],
   notices: ['Notices & Announcements', 'Publish and review school announcements.'],
   calendar: ['Calendar', 'School events will be available when calendar data is connected.'],
   settings: ['Settings', 'Review your authenticated administrator account.'],
@@ -644,7 +649,6 @@ function NotConnectedPage({ active }) {
     attendance: ['No attendance data available.', 'Attendance records are not exposed by the current school API.'],
     examinations: ['No examination data available.', 'Exam scheduling is not connected to the current school API.'],
     reports: ['No results or reports available.', 'Academic results are not exposed by the current school API.'],
-    fees: ['No fee records found.', 'Fee collection and receipts are not connected to the current school API.'],
     calendar: ['No calendar events available.', 'Calendar events are not exposed by the current school API.'],
   }[active];
   const Icon = navigation.find((item) => item.id === active)?.icon || FileText;
@@ -898,7 +902,8 @@ export default function AdminDashboard({ onLogout, previewMode = false }) {
           {active === 'classes' && <ClassesPage stats={stats} statsLoading={statsLoading} statsError={statsError} onRetry={refreshDashboard} query={query} onQuery={setQuery} previewMode={previewMode} />}
           {active === 'notices' && <NoticesPage resource={resources.notices} query={query} onQuery={setQuery} onAdd={() => setDialog({ kind: 'notice' })} onRetry={() => loadResource('notices')} onRefresh={() => loadResource('notices')} previewMode={previewMode} />}
           {active === 'attendance' && <AdminAttendancePage token={auth.token} stats={stats} statsLoading={statsLoading} statsError={statsError} previewMode={previewMode} />}
-          {['timetable', 'examinations', 'reports', 'fees', 'calendar'].includes(active) && <NotConnectedPage active={active} />}
+          {active === 'fees' && <FeeManagementPage token={auth.token} previewMode={previewMode} stats={stats} statsLoading={statsLoading} statsError={statsError} onRefreshStats={refreshDashboard} />}
+          {['timetable', 'examinations', 'reports', 'calendar'].includes(active) && <NotConnectedPage active={active} />}
           {active === 'settings' && <SettingsPage profile={auth.profile} previewMode={previewMode} />}
           <footer className="adm-footer">EduSure <span>·</span> Admin workspace</footer>
         </div>

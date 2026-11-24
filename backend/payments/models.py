@@ -199,3 +199,50 @@ class PaymentTransaction(models.Model):
 
     def __str__(self):
         return f"{self.receipt_number or self.id} | {self.student.username} | {self.payment_mode} | {self.status}"
+
+
+class ClassFeeStructure(models.Model):
+    """Fee structure of a registered class: an ordered list of fee categories."""
+
+    school_id = models.IntegerField(db_index=True)
+    class_grade = models.CharField(max_length=20)
+    section = models.CharField(max_length=5, blank=True, default="")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["class_grade", "section"]
+        unique_together = [("school_id", "class_grade", "section")]
+
+    def __str__(self):
+        label = f"Class {self.class_grade}"
+        if self.section:
+            label += f" · {self.section}"
+        return f"[{self.school_id}] {label}"
+
+
+class ClassFeeCategory(models.Model):
+    """One fee category within a class fee structure.
+
+    Connected to the FeeType list: ``fee_type_id``/``fee_type_title`` identify
+    the fee type this category uses, and ``amount`` is the fee amount for that
+    category in the class.
+    """
+
+    structure = models.ForeignKey(
+        ClassFeeStructure, on_delete=models.CASCADE, related_name="categories"
+    )
+    fee_type_id = models.IntegerField()
+    fee_type_title = models.CharField(max_length=150)
+    amount = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0.00")
+    )
+    position = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["position", "id"]
+
+    def __str__(self):
+        return f"{self.fee_type_title} — {self.amount}"

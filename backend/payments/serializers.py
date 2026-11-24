@@ -1,6 +1,14 @@
 from decimal import Decimal
+from django.db import transaction
 from rest_framework import serializers
-from .models import FeeStructure, PaymentTransaction, SchoolPaymentConfig, StudentFeeInvoice
+from .models import (
+    ClassFeeCategory,
+    ClassFeeStructure,
+    FeeStructure,
+    PaymentTransaction,
+    SchoolPaymentConfig,
+    StudentFeeInvoice,
+)
 
 
 class SchoolPaymentConfigSerializer(serializers.ModelSerializer):
@@ -214,3 +222,55 @@ class VerifyGatewayPaymentSerializer(serializers.Serializer):
     gateway_order_id = serializers.CharField()
     gateway_payment_id = serializers.CharField()
     gateway_signature = serializers.CharField(required=False, allow_blank=True, default="MOCK_SIGNATURE")
+
+
+class ClassFeeCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClassFeeCategory
+        fields = ["id", "fee_type_id", "fee_type_title", "amount", "position", "is_active"]
+
+
+class ClassFeeStructureSerializer(serializers.ModelSerializer):
+    """A per-class fee structure: an ordered list of fee categories."""
+
+    categories = ClassFeeCategorySerializer(many=True, required=False, default=list)
+
+    class Meta:
+        model = ClassFeeStructure
+        fields = [
+            "id",
+            "class_grade",
+            "section",
+            "is_active",
+            "created_at",
+            "updated_at",
+            "categories",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+    @transaction.atomic
+    def create(self, validated_data):
+        categories = validated_data.pop("categories", [])
+        structure = ClassFeeStructure.objects.create(
+            school_id=self.context["school_id"], **validated_data
+        )
+        self._replace_categories(structure, categories)
+        return structure
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        categories = validated_data.pop("categories", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if categories is not None:
+            self._replace_categories(instance, categories)
+        return instance
+
+    @staticmethod
+    def _replace_categories(structure, categories):
+        structure.categories.all().delete()
+        for position, category in enumerate(categories):
+            category.pop("id", None)
+            category.setdefault("position", position)
+            ClassFeeCategory.objects.create(structure=structure, **category)

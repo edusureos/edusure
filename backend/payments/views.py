@@ -20,10 +20,17 @@ from rest_framework.views import APIView
 from users.models import StudentProfile
 from users.permissions import IsSchoolAdmin
 
-from .models import FeeStructure, PaymentTransaction, SchoolPaymentConfig, StudentFeeInvoice
+from .models import (
+    ClassFeeStructure,
+    FeeStructure,
+    PaymentTransaction,
+    SchoolPaymentConfig,
+    StudentFeeInvoice,
+)
 from .receipt_utils import generate_fee_receipt_pdf
 from .serializers import (
     AssignFeeInvoicesSerializer,
+    ClassFeeStructureSerializer,
     CollectOfflinePaymentSerializer,
     CreateGatewayOrderSerializer,
     FeeStructureSerializer,
@@ -726,3 +733,64 @@ class FeeReceiptPDFView(APIView):
             filename=f"{txn.receipt_number}.pdf",
             content_type="application/pdf",
         )
+
+
+class AdminClassFeeStructureListCreateView(APIView):
+    """List the school's per-class fee structures and create new ones."""
+
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
+
+    @extend_schema(summary="List class fee structures", responses={200: ClassFeeStructureSerializer(many=True)})
+    def get(self, request):
+        qs = ClassFeeStructure.objects.filter(
+            school_id=request.user.school_id
+        ).prefetch_related("categories")
+        return Response(
+            ClassFeeStructureSerializer(qs, many=True).data,
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        summary="Create a class fee structure",
+        request=ClassFeeStructureSerializer,
+        responses={201: ClassFeeStructureSerializer},
+    )
+    def post(self, request):
+        serializer = ClassFeeStructureSerializer(
+            data=request.data, context={"school_id": request.user.school_id}
+        )
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        structure = serializer.save()
+        return Response(
+            ClassFeeStructureSerializer(structure).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class AdminClassFeeStructureDetailView(APIView):
+    """View, update or remove a class fee structure."""
+
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
+
+    def get_object(self, request, pk):
+        return get_object_or_404(
+            ClassFeeStructure, id=pk, school_id=request.user.school_id
+        )
+
+    def get(self, request, pk):
+        structure = self.get_object(request, pk)
+        return Response(ClassFeeStructureSerializer(structure).data, status=status.HTTP_200_OK)
+
+    def put(self, request, pk):
+        structure = self.get_object(request, pk)
+        serializer = ClassFeeStructureSerializer(structure, data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        updated = serializer.save()
+        return Response(ClassFeeStructureSerializer(updated).data, status=status.HTTP_200_OK)
+
+    def delete(self, request, pk):
+        structure = self.get_object(request, pk)
+        structure.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

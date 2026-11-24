@@ -85,6 +85,35 @@ export async function downloadAdminExport(entity, fileFormat, token, filters = {
   window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
 }
 
+export async function downloadAdminFeeReceipt(receiptNumber, token) {
+  const response = await fetch(
+    `/api/payments/receipt/${encodeURIComponent(receiptNumber)}/pdf/`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!response.ok) {
+    let payload;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+    throw new AdminApiError(
+      describePayload(payload) || `Receipt download failed (${response.status}).`,
+      response.status,
+      payload,
+    );
+  }
+
+  const url = window.URL.createObjectURL(await response.blob());
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${receiptNumber}.pdf`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
+}
+
 export const adminEndpoints = {
   profile: '/me/',
   stats: '/admin/stats/',
@@ -94,4 +123,13 @@ export const adminEndpoints = {
   teachers: '/admin/teachers/',
   classAttendance: '/api/users/attendance/class/',
   notices: '/notices/',
+  feeSummary: '/api/payments/admin/summary/',
+  feeStructures: '/api/payments/admin/fee-structures/',
+  feeClassStructures: '/api/payments/admin/class-fee-structures/',
+  feeClassStructureDetail: (id) => `/api/payments/admin/class-fee-structures/${encodeURIComponent(id)}/`,
+  feeInvoices: '/api/payments/admin/invoices/',
+  feeAssignInvoices: '/api/payments/admin/invoices/assign/',
+  feeTransactions: '/api/payments/admin/transactions/',
+  feeCollectOffline: '/api/payments/admin/collect-offline/',
+  feeVerifyUtr: (transactionId) => `/api/payments/admin/verify-utr/${encodeURIComponent(transactionId)}/`,
 };

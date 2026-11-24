@@ -21,6 +21,7 @@ import ProgressReportGraph from './ProgressReportGraph';
 import EmptyState from './EmptyState';
 import AttendancePage from './AttendancePage';
 import { fetchAttendance } from './attendance-api';
+import FeeSubmission from './FeeSubmission';
 
 const EMPTY = {
   performance: 'No analytics available yet. Data will appear here once activity is recorded.',
@@ -46,11 +47,12 @@ export default function PortalPage({ onLogout, userId, profile = {} }) {
   const [attendanceData, setAttendanceData] = useState(null);
   const [isAttendanceLoading, setIsAttendanceLoading] = useState(true);
   const [attendanceError, setAttendanceError] = useState('');
+  const [submittedUtr, setSubmittedUtr] = useState('');
 
   const dashboardButtons = [
     { id: 'attendance', label: 'Attendance', icon: UserCheck },
     { id: 'timetable', label: 'Timetable', icon: CalendarDays },
-    { id: 'fee-submission', label: 'Fee Submission', icon: CreditCard },
+    { id: 'fee-submission', label: 'Fee Management', icon: CreditCard },
     { id: 'progress-report', label: 'Progress Report', icon: TrendingUp },
     { id: 'academic-calendar', label: 'Academic Calendar', icon: Calendar },
     { id: 'notices', label: 'Notices', icon: Bell },
@@ -153,7 +155,6 @@ export default function PortalPage({ onLogout, userId, profile = {} }) {
 
   const modalCopy = {
     timetable: EMPTY.timetable,
-    'fee-submission': EMPTY.fees,
     'fee-record': EMPTY.fees,
     'progress-report': EMPTY.reports,
     homework: EMPTY.homework,
@@ -163,6 +164,12 @@ export default function PortalPage({ onLogout, userId, profile = {} }) {
 
   function openAttendance() {
     setActiveSection('attendance');
+    setActiveModal(null);
+    setIsDashboardOpen(false);
+  }
+
+  function openFeeSubmission() {
+    setActiveSection('fee-submission');
     setActiveModal(null);
     setIsDashboardOpen(false);
   }
@@ -222,6 +229,12 @@ export default function PortalPage({ onLogout, userId, profile = {} }) {
 
       {activeSection === 'attendance' ? (
         <AttendancePage onBack={() => setActiveSection('dashboard')} />
+      ) : activeSection === 'fee-submission' ? (
+        <FeeSubmission
+          onBack={() => setActiveSection('dashboard')}
+          submittedUtr={submittedUtr}
+          onSubmitUtr={setSubmittedUtr}
+        />
       ) : (
       <main className="relative z-10 flex-1 w-full max-w-7xl mx-auto px-4 py-6 sm:px-6 sm:py-8 lg:px-8 space-y-6">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
@@ -322,7 +335,7 @@ export default function PortalPage({ onLogout, userId, profile = {} }) {
             title="Fee Status"
             detail={EMPTY.fees}
             icon={CreditCard}
-            onClick={() => setActiveModal('fee-record')}
+            onClick={openFeeSubmission}
           />
         </div>
 
@@ -371,10 +384,10 @@ export default function PortalPage({ onLogout, userId, profile = {} }) {
                 onClick={() => setActiveModal('progress-report')}
               />
               <QuickCard
-                title="Fee Record"
-                detail="No receipts posted yet"
+                title="Fee Management"
+                detail="View and submit fees"
                 icon={CreditCard}
-                onClick={() => setActiveModal('fee-record')}
+                onClick={openFeeSubmission}
               />
               <QuickCard
                 title="Academic Calendar"
@@ -429,7 +442,9 @@ export default function PortalPage({ onLogout, userId, profile = {} }) {
             const Icon = btn.icon;
             const isActive = btn.id === 'attendance'
               ? activeSection === 'attendance'
-              : activeSection === 'dashboard' && activeModal === btn.id;
+              : btn.id === 'fee-submission'
+                ? activeSection === 'fee-submission'
+                : activeSection === 'dashboard' && activeModal === btn.id;
             return (
               <button
                 key={btn.id}
@@ -437,6 +452,8 @@ export default function PortalPage({ onLogout, userId, profile = {} }) {
                 onClick={() => {
                   if (btn.id === 'attendance') {
                     openAttendance();
+                  } else if (btn.id === 'fee-submission') {
+                    openFeeSubmission();
                   } else {
                     setActiveSection('dashboard');
                     setActiveModal(btn.id);
