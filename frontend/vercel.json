@@ -1,9 +1,8 @@
 {
-  "trailingSlash": true,
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://edusure-backend.onrender.com/api/:path*/"
+      "destination": "https://edusure-backend.onrender.com/api/:path*"
     },
     {
       "source": "/media/:path*",
