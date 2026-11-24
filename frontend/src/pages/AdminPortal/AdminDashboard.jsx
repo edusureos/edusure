@@ -27,6 +27,11 @@ const navigation = [
   { id: 'settings', label: 'Settings', icon: Settings, group: 'Administration' },
 ];
 
+const schoolBranding = {
+  name: 'Prince Learning Academy',
+  logo: '/prince-learning-academy-logo.jpeg',
+};
+
 const pageCopy = {
   dashboard: ['School overview', 'A clear view of your school workspace and connected records.'],
   students: ['Students', ''],
@@ -79,8 +84,8 @@ function Button({ variant = 'primary', children, className = '', ...props }) {
 function Brand({ compact = false }) {
   return (
     <div className={`adm-brand${compact ? ' adm-brand-compact' : ''}`}>
-      <img src="/edusure-logo.jpg" alt="" />
-      {!compact && <div><strong>EduSure</strong><span>ADMIN PORTAL</span></div>}
+      <img src={schoolBranding.logo} alt={`${schoolBranding.name} logo`} />
+      {!compact && <div><strong>{schoolBranding.name}</strong><span>ADMIN PORTAL</span></div>}
     </div>
   );
 }
@@ -258,7 +263,9 @@ function AuthGate({ state, onRetry }) {
 function DashboardPage({ stats, statsLoading, statsError, notices, noticesLoading, noticesError, onNavigate, onRefresh, profile, previewMode }) {
   const classCount = Array.isArray(stats?.class_breakdown) ? stats.class_breakdown.length : null;
   const value = (key) => statsLoading ? '…' : statsError ? '—' : Number.isFinite(stats?.[key]) ? stats[key] : '—';
-  const shortcuts = navigation.filter((item) => item.id !== 'dashboard');
+  const shortcuts = navigation.filter((item) => (
+    !['dashboard', 'students', 'teachers', 'classes'].includes(item.id)
+  ));
   return (
     <>
       <PageHeading title={`Welcome ${profile.username ? `, ${profile.username}` : ''}`} description={previewMode ? 'Explore the Admin Portal layout in this frontend-only preview.' : 'Here’s an overview of the records connected to your school.'} action={!previewMode && <Button variant="outline" onClick={onRefresh}><ArrowDownToLine size={15} /> Refresh data</Button>} />
@@ -273,8 +280,8 @@ function DashboardPage({ stats, statsLoading, statsError, notices, noticesLoadin
         {statsError && <div className="adm-inline-error" role="alert"><CircleAlert size={15} /><span>School overview could not be loaded: {statsError}</span><button onClick={onRefresh}>Retry</button></div>}
       </section>
       <section className="adm-overview-section">
-        <div className="adm-section-heading"><div><span className="adm-section-kicker">WORKSPACE</span><h2>Administration</h2></div></div>
-        <div className="adm-shortcut-grid">{shortcuts.map((item) => <button className="adm-shortcut-card" key={item.id} onClick={() => onNavigate(item.id)}><span className="adm-shortcut-icon"><item.icon size={18} /></span><span><strong>{item.label}</strong><small>{item.id === 'students' ? 'School student records' : item.id === 'teachers' ? 'Faculty directory' : item.id === 'classes' ? 'Class and section totals' : 'Open section'}</small></span><ArrowRight size={16} /></button>)}</div>
+        <div className="adm-section-heading"><div><span className="adm-section-kicker">WORKSPACE</span><h2>Quick access</h2></div></div>
+        <div className="adm-shortcut-grid">{shortcuts.map((item) => <button className="adm-shortcut-card" key={item.id} onClick={() => onNavigate(item.id)}><span className="adm-shortcut-icon"><item.icon size={21} /></span><span><strong>{item.label}</strong><small>{pageCopy[item.id]?.[1] || 'Open section'}</small></span><ArrowRight size={16} /></button>)}</div>
       </section>
       <section className="adm-card adm-dashboard-notices"><div className="adm-card-heading"><div><span className="adm-section-kicker">COMMUNICATION</span><h2>Recent announcements</h2></div><button className="adm-link-button" onClick={() => onNavigate('notices')}>View all <ArrowRight size={14} /></button></div>{noticesLoading ? <LoadingPanel label="Loading announcements…" /> : noticesError ? <ErrorPanel error={noticesError} onRetry={() => onNavigate('notices')} /> : notices.length ? <NoticeRows notices={notices.slice(0, 3)} /> : <EmptyState icon={Megaphone} title="No announcements published yet." description="Published school notices will appear here." action={<Button variant="outline" onClick={() => onNavigate('notices')}>Open notices</Button>} />}</section>
       <div className="adm-dashboard-footnote"><ShieldCheck size={15} />{previewMode ? 'This standalone preview does not load or modify school records.' : 'Student, teacher and notice information is loaded from the existing authenticated school services.'}</div>
@@ -322,10 +329,10 @@ function ExportButtons({ entity, token, filters, disabled = false }) {
 }
 
 function MetricCard({ icon: Icon, label, value, detail, onClick }) {
-  return <button className="adm-metric-card" onClick={onClick}><span className="adm-metric-icon"><Icon size={18} /></span><span className="adm-metric-label">{label}</span><strong>{value}</strong><span className="adm-metric-detail">{detail}</span><ArrowRight size={15} className="adm-metric-arrow" /></button>;
+  return <button className="adm-metric-card" onClick={onClick}><span className="adm-metric-icon"><Icon size={21} /></span><span className="adm-metric-label">{label}</span><strong>{value}</strong><span className="adm-metric-detail">{detail}</span><ArrowRight size={15} className="adm-metric-arrow" /></button>;
 }
 
-function StudentPage({ resource, query, onQuery, onAdd, onEdit, onDeactivate, onRetry, onRefresh, previewMode, onUpload }) {
+function StudentPage({ resource, query, onQuery, onAdd, onEdit, onDeactivate, onRetry, onRefresh, previewMode }) {
   const [grade, setGrade] = useState('all');
   const [section, setSection] = useState('all');
   const [page, setPage] = useState(1);
@@ -652,124 +659,11 @@ function NotConnectedPage({ active }) {
   return <><PageHeading title={pageCopy[0].replace(/^No /, '').replace(/\.$/, '')} description="This section is ready for a verified school data integration." /><section className="adm-card adm-disconnected-card"><EmptyState icon={Icon} title={copy[0]} description={copy[1]} /><div className="adm-unavailable-label"><CircleAlert size={14} /> Not connected</div></section></>;
 }
 
-function AdminChangePasswordCard({ username, token, previewMode, onPasswordChanged }) {
-  const [form, setForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    if (previewMode) return;
-    if (form.new_password !== form.confirm_password) {
-      setError('New password and confirm password do not match.');
-      return;
-    }
-    if (form.new_password.length < 8) {
-      setError('Password must be at least 8 characters long.');
-      return;
-    }
-    setBusy(true);
-    try {
-      const loginCheck = await fetch('/api/auth/login/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username, password: form.current_password }),
-      });
-      if (!loginCheck.ok) {
-        throw new Error('Current password is incorrect.');
-      }
-      const res = await fetch('/api/auth/change-password/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer ' + token,
-        },
-        body: JSON.stringify({
-          new_password: form.new_password,
-          confirm_password: form.confirm_password,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data.detail || data.new_password?.[0] || data.password?.[0] || 'Failed to update password.');
-      }
-      setForm({ current_password: '', new_password: '', confirm_password: '' });
-      setSuccess('Password updated successfully.');
-      if (onPasswordChanged) onPasswordChanged();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to update password.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <section className="adm-panel" style={{ marginTop: '1.25rem', maxWidth: '32rem' }}>
-      <div className="adm-panel-header">
-        <div>
-          <h3>Change Admin Password</h3>
-          <p>Update your administrator login password directly from the portal.</p>
-        </div>
-      </div>
-      <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '0.85rem', padding: '1rem 1.25rem 1.25rem' }}>
-        {error && <div className="adm-state-error" style={{ padding: '0.65rem 0.85rem', borderRadius: '0.5rem', fontSize: '0.85rem' }} role="alert">{error}</div>}
-        {success && <div className="adm-toast" style={{ margin: 0 }} role="status"><Check size={15} />{success}</div>}
-        <label style={{ display: 'grid', gap: '0.35rem', fontSize: '0.85rem', fontWeight: 600 }}>
-          <span>Current Password</span>
-          <input
-            type="password"
-            required
-            disabled={previewMode || busy}
-            value={form.current_password}
-            onChange={(e) => setForm((prev) => ({ ...prev, current_password: e.target.value }))}
-            placeholder="Enter current password"
-            className="adm-input"
-          />
-        </label>
-        <label style={{ display: 'grid', gap: '0.35rem', fontSize: '0.85rem', fontWeight: 600 }}>
-          <span>New Password</span>
-          <input
-            type="password"
-            required
-            disabled={previewMode || busy}
-            value={form.new_password}
-            onChange={(e) => setForm((prev) => ({ ...prev, new_password: e.target.value }))}
-            placeholder="Min 8 chars (A-Z, a-z, 0-9, @#$)"
-            className="adm-input"
-          />
-        </label>
-        <label style={{ display: 'grid', gap: '0.35rem', fontSize: '0.85rem', fontWeight: 600 }}>
-          <span>Confirm New Password</span>
-          <input
-            type="password"
-            required
-            disabled={previewMode || busy}
-            value={form.confirm_password}
-            onChange={(e) => setForm((prev) => ({ ...prev, confirm_password: e.target.value }))}
-            placeholder="Re-enter new password"
-            className="adm-input"
-          />
-        </label>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
-          <Button type="submit" disabled={previewMode || busy}>
-            <LockKeyhole size={15} />
-            {busy ? 'Updating...' : 'Update Password'}
-          </Button>
-        </div>
-      </form>
-    </section>
-  );
-}
-
-function SettingsPage({ profile, token, previewMode, onPasswordChanged }) {
+function SettingsPage({ profile, previewMode }) {
   return (
     <>
       <PageHeading title="Settings" description={previewMode ? 'No account is connected to this frontend-only preview.' : 'Account and access details from the authenticated EduSure session.'} />
       <section className="adm-card adm-settings-card"><div className="adm-card-heading"><div><span className="adm-section-kicker">ACCOUNT</span><h2>Administrator profile</h2><p>{previewMode ? 'Preview mode does not authenticate or load account details.' : 'Identity is provided by EduSure authentication.'}</p></div><span className="adm-settings-mark"><ShieldCheck size={18} /></span></div><div className="adm-account-list"><div><span>Account ID</span><strong>{previewMode ? 'Not connected' : profile.username || 'Not available'}</strong></div><div><span>Role</span><strong>{previewMode ? 'Preview only' : profile.role}</strong></div><div><span>School ID</span><strong>{previewMode ? 'Not connected' : profile.school_id ?? 'Not available'}</strong></div><div><span>Authentication</span><strong className="adm-auth-status">{previewMode ? 'No sign-in in preview' : <><i /> Verified session</>}</strong></div></div><div className="adm-unavailable-label"><CircleAlert size={14} />{previewMode ? 'This preview is read-only and uses no school data.' : 'School preferences are not connected to an API.'}</div></section>
-      <AdminChangePasswordCard username={profile?.username} token={token} previewMode={previewMode} onPasswordChanged={onPasswordChanged} />
     </>
   );
 }
@@ -785,7 +679,7 @@ function Status({ active, children }) {
 function Header({ active, profile, query, onQuery, onMenu, onNavigate, onLogout, previewMode }) {
   const current = navigation.find((item) => item.id === active);
   return (
-    <header className="adm-topbar"><div className="adm-topbar-start"><IconButton label="Open navigation" className="adm-menu-button" onClick={onMenu}><Menu size={19} /></IconButton><div className="adm-breadcrumb"><span>EduSure</span><ChevronRight size={14} /><strong>{current.label}</strong></div></div><div className="adm-topbar-actions">{searchSections.has(active) && <SearchBox value={query} onChange={onQuery} placeholder={`Search ${current.label.toLowerCase()}`} label={`Search ${current.label.toLowerCase()}`} />}<IconButton label="Open notices" onClick={() => onNavigate('notices')}><Bell size={18} /></IconButton><span className="adm-topbar-divider" /><div className="adm-account-chip"><span><UserRound size={15} /></span><div><strong>{previewMode ? 'Preview account' : profile.username}</strong><small>{previewMode ? '' : profile.role === 'SUPER_ADMIN' ? 'Super admin' : 'School admin'}</small></div></div>{onLogout && <IconButton label="Sign out" onClick={onLogout}><LogOut size={17} /></IconButton>}</div></header>
+    <header className="adm-topbar"><div className="adm-topbar-start"><IconButton label="Open navigation" className="adm-menu-button" onClick={onMenu}><Menu size={19} /></IconButton><div className="adm-breadcrumb"><span>{schoolBranding.name}</span><ChevronRight size={14} /><strong>{current.label}</strong></div></div><div className="adm-topbar-actions">{searchSections.has(active) && <SearchBox value={query} onChange={onQuery} placeholder={`Search ${current.label.toLowerCase()}`} label={`Search ${current.label.toLowerCase()}`} />}<IconButton label="Open notices" onClick={() => onNavigate('notices')}><Bell size={18} /></IconButton><span className="adm-topbar-divider" /><div className="adm-account-chip"><span><UserRound size={15} /></span><div><strong>{previewMode ? 'Preview account' : profile.username}</strong><small>{previewMode ? '' : profile.role === 'SUPER_ADMIN' ? 'Super admin' : 'School admin'}</small></div></div>{onLogout && <IconButton label="Sign out" onClick={onLogout}><LogOut size={17} /></IconButton>}</div></header>
   );
 }
 
@@ -995,7 +889,6 @@ export default function AdminDashboard({ onLogout, previewMode = false }) {
     <div className="adm-app">
       <aside className={`adm-sidebar${collapsed ? ' is-collapsed' : ''}${mobileOpen ? ' is-mobile-open' : ''}`}>
         <div className="adm-sidebar-brand"><Brand compact={collapsed} /><IconButton className="adm-collapse-button" label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} onClick={() => setCollapsed((value) => !value)}><ChevronDown size={16} /></IconButton><IconButton className="adm-mobile-close" label="Close menu" onClick={() => setMobileOpen(false)}><X size={18} /></IconButton></div>
-        <div className="adm-workspace"><span className="adm-workspace-mark"><ShieldCheck size={16} /></span><div><strong>{previewMode ? '' : 'School workspace'}</strong><small>{previewMode ? 'No school data connected' : auth.profile.school_id ? `School ID ${auth.profile.school_id}` : 'Administrator access'}</small></div><ChevronDown size={14} /></div>
         <nav className="adm-navigation" aria-label="Admin navigation">{groups.map((group) => <div className="adm-nav-group" key={group}><span className="adm-nav-label">{group}</span>{navigation.filter((item) => item.group === group).map((item) => <button type="button" key={item.id} className={`adm-nav-item${active === item.id ? ' active' : ''}`} onClick={() => navTo(item.id)} aria-current={active === item.id ? 'page' : undefined} title={collapsed ? item.label : undefined}><item.icon size={18} /><span>{item.label}</span></button>)}</div>)}</nav>
         <div className="adm-sidebar-footer"><div className="adm-admin-profile"><span className="adm-admin-avatar"><UserRound size={16} /></span><div><strong>{previewMode ? 'Preview account' : auth.profile.username}</strong><small>{previewMode ? '' : auth.profile.role === 'SUPER_ADMIN' ? 'Super admin' : 'School admin'}</small></div></div><p><ShieldCheck size={14} />{previewMode ? 'Read-only preview' : 'Secure EduSure workspace'}</p></div>
       </aside>
@@ -1021,8 +914,8 @@ export default function AdminDashboard({ onLogout, previewMode = false }) {
           />}
           {active === 'fees' && <FeeManagementPage token={auth.token} previewMode={previewMode} stats={stats} statsLoading={statsLoading} statsError={statsError} onRefreshStats={refreshDashboard} />}
           {['timetable', 'examinations', 'reports', 'calendar'].includes(active) && <NotConnectedPage active={active} />}
-          {active === 'settings' && <SettingsPage profile={auth.profile} token={auth.token} previewMode={previewMode} onPasswordChanged={() => setNotice('Admin password updated successfully.')} />}
-          <footer className="adm-footer">EduSure <span>·</span> Admin workspace</footer>
+          {active === 'settings' && <SettingsPage profile={auth.profile} previewMode={previewMode} />}
+          <footer className="adm-footer">{schoolBranding.name} <span>·</span> Admin Portal</footer>
         </div>
       </main>
       {dialog?.kind === 'student' && <StudentForm record={dialog.record} busy={mutating} onClose={() => setDialog(null)} onSubmit={submitStudent} />}

@@ -87,7 +87,7 @@ export default function LoginForm({ onLogin }) {
       <div className="mb-8">
         <h1 className="text-3xl sm:text-4xl xl:text-[2.6rem] font-extrabold text-[#0A192F] tracking-tight font-heading leading-tight">
           Teachers Teach. <br />
-          <span className="text-[#2E7D32]">EduSure Ensures.</span>
+          <span className="text-pla-700">EduSure Ensures.</span>
         </h1>
         <p className="text-sm text-slate-500 mt-3 font-normal leading-relaxed">
            Sign in to continue to your EduSure account.
@@ -146,7 +146,7 @@ export default function LoginForm({ onLogin }) {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 rounded border-slate-300 text-[#2E7D32] focus:ring-[#2E7D32]/20 focus:ring-2 cursor-pointer transition-colors accent-[#2E7D32]"
+                className="w-4 h-4 rounded border-slate-300 text-pla-700 focus:ring-pla-700/20 focus:ring-2 cursor-pointer transition-colors accent-pla-700"
               />
               <span className="text-xs text-slate-600 group-hover:text-slate-800 transition-colors">
                 Remember Me
@@ -156,7 +156,7 @@ export default function LoginForm({ onLogin }) {
             <button
               type="button"
               onClick={() => setIsForgotModalOpen(true)}
-              className="text-xs font-semibold text-[#2E7D32] hover:text-[#1B5E20] hover:underline transition-colors focus:outline-none cursor-pointer"
+              className="text-xs font-semibold text-pla-700 hover:text-pla-800 hover:underline transition-colors focus:outline-none cursor-pointer"
             >
               Forgot Password?
             </button>

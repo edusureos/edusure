@@ -50,9 +50,9 @@ export default function EduSureLogo({
               titleSizes[size] || titleSizes.md
             } ${isDark ? 'text-white' : 'text-[#0A192F]'}`}
           >
-            Edu<span className="text-[#2E7D32]">Sure</span>
+            Edu<span className="text-pla-700">Sure</span>
           </span>
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#2E7D32] mb-2 ml-0.5" />
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-pla-700 mb-2 ml-0.5" />
         </div>
 
         {showTagline && (

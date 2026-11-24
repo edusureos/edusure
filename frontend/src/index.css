@@ -1,19 +1,32 @@
 @import "tailwindcss";
 
+@theme {
+  --color-pla-50: #fff9e8;
+  --color-pla-100: #f9edc9;
+  --color-pla-200: #f2dca0;
+  --color-pla-300: #e6c46c;
+  --color-pla-400: #d7ad48;
+  --color-pla-500: #bb8b21;
+  --color-pla-600: #977016;
+  --color-pla-700: #78570f;
+  --color-pla-800: #5d430d;
+  --color-pla-900: #3d2c08;
+}
+
 :root {
   --font-heading: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   --font-body: 'Inter', system-ui, -apple-system, sans-serif;
   --color-edusure-navy: #0A192F;
-  --color-edusure-green: #2E7D32;
-  --color-edusure-border: #E2E8F0;
+  --color-edusure-green: #977016;
+  --color-edusure-border: #E8DEBE;
   --radius-edusure-card: 1.5rem;
-  --clay-canvas: #EDF4EE;
-  --clay-surface: #F4F7FB;
+  --clay-canvas: #F5F0E4;
+  --clay-surface: #FCF9F1;
   --clay-card-bg: var(--clay-surface);
-  --clay-edge-start: rgb(46 125 50 / 26%);
-  --clay-edge-end: rgb(121 103 181 / 23%);
-  --clay-shadow-raised: 9px 9px 18px rgb(148 163 184 / 22%), -8px -8px 18px rgb(255 255 255 / 96%);
-  --clay-shadow-inset: inset 4px 4px 8px rgb(148 163 184 / 18%), inset -4px -4px 8px rgb(255 255 255 / 96%);
+  --clay-edge-start: rgb(191 148 45 / 34%);
+  --clay-edge-end: rgb(36 57 84 / 20%);
+  --clay-shadow-raised: 9px 9px 18px rgb(105 91 61 / 18%), -8px -8px 18px rgb(255 255 255 / 96%);
+  --clay-shadow-inset: inset 4px 4px 8px rgb(105 91 61 / 14%), inset -4px -4px 8px rgb(255 255 255 / 96%);
 }
 
 body {
@@ -60,39 +73,39 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .clay-tone-mint {
-  --clay-card-bg: #F0F7EF;
-  --clay-edge-start: #A9D6AE;
-  --clay-edge-end: #D7C8EB;
+  --clay-card-bg: #FFF7E4;
+  --clay-edge-start: #E4C875;
+  --clay-edge-end: #D8D0BD;
 }
 
 .clay-tone-lilac {
-  --clay-card-bg: #F5F0FA;
-  --clay-edge-start: #CDBAE5;
-  --clay-edge-end: #B9DABF;
+  --clay-card-bg: #F8F5EA;
+  --clay-edge-start: #D7C487;
+  --clay-edge-end: #C7D0DC;
 }
 
 .clay-tone-blue {
-  --clay-card-bg: #EFF5FB;
-  --clay-edge-start: #B6D2EE;
-  --clay-edge-end: #CFBDE4;
+  --clay-card-bg: #F1F4F7;
+  --clay-edge-start: #BFCAD8;
+  --clay-edge-end: #E0C771;
 }
 
 .clay-tone-rose {
-  --clay-card-bg: #FBF1F5;
-  --clay-edge-start: #E5BFCF;
-  --clay-edge-end: #C9C0E5;
+  --clay-card-bg: #FBF4E9;
+  --clay-edge-start: #E2C48A;
+  --clay-edge-end: #D6DCE5;
 }
 
 .clay-tone-amber {
-  --clay-card-bg: #FAF6EB;
-  --clay-edge-start: #E3D29F;
-  --clay-edge-end: #C8DABF;
+  --clay-card-bg: #FBF2D8;
+  --clay-edge-start: #D8B34D;
+  --clay-edge-end: #C8D0DA;
 }
 
 .clay-login-card {
-  --clay-card-bg: #F0F7EF;
-  --clay-edge-start: #A9D6AE;
-  --clay-edge-end: #D7C8EB;
+  --clay-card-bg: #FFF7E4;
+  --clay-edge-start: #E4C875;
+  --clay-edge-end: #D8D0BD;
   padding: clamp(1.5rem, 3vw, 2.25rem);
   border: 1px solid transparent;
   border-radius: 1.75rem;

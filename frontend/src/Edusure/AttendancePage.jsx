@@ -42,6 +42,10 @@ function dateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
+function monthInputValue(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
 function statusLabel(status) {
   if (status === 'PRESENT') return 'Present';
   if (status === 'LATE') return 'Present';
@@ -242,10 +246,10 @@ export default function AttendancePage({ onBack }) {
   const monthName = MONTH_FORMAT.format(monthDate);
   const isCurrentMonth = monthDate.getFullYear() === today.getFullYear()
     && monthDate.getMonth() === today.getMonth();
+  const isFutureMonth = monthDate > localDate(today.getFullYear(), today.getMonth(), 1);
   const isEmpty = !isLoading && !error && knownRecordDays === 0;
 
-  function changeMonth(offset) {
-    setMonthDate((current) => localDate(current.getFullYear(), current.getMonth() + offset, 1));
+  function resetMonthView() {
     setMonthData(null);
     setIsLoading(true);
     setError('');
@@ -253,13 +257,32 @@ export default function AttendancePage({ onBack }) {
     setSelectedDate(null);
   }
 
+  function selectMonth(date) {
+    const firstOfMonth = localDate(date.getFullYear(), date.getMonth(), 1);
+    if (firstOfMonth > localDate(today.getFullYear(), today.getMonth(), 1)) return;
+    setMonthDate(firstOfMonth);
+    resetMonthView();
+  }
+
+  function changeMonth(offset) {
+    setMonthDate((current) => {
+      const next = localDate(current.getFullYear(), current.getMonth() + offset, 1);
+      return next > localDate(today.getFullYear(), today.getMonth(), 1) ? current : next;
+    });
+    resetMonthView();
+  }
+
+  function handleMonthChange(value) {
+    const match = /^(\d{4})-(\d{2})$/.exec(value);
+    if (!match) return;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    if (month < 1 || month > 12) return;
+    selectMonth(localDate(year, month - 1, 1));
+  }
+
   function showCurrentMonth() {
-    setMonthDate(localDate(today.getFullYear(), today.getMonth(), 1));
-    setMonthData(null);
-    setIsLoading(true);
-    setError('');
-    setActiveFilter(null);
-    setSelectedDate(null);
+    selectMonth(today);
   }
 
   function selectFilter(status) {
@@ -290,23 +313,6 @@ export default function AttendancePage({ onBack }) {
           </div>
           <h1>My Attendance</h1>
           <p>Track your attendance, monitor your progress and stay consistent.</p>
-        </div>
-        <div className="attendance-month-control" aria-label="Attendance month">
-          <button type="button" onClick={() => changeMonth(-1)} aria-label="Previous month">
-            <ChevronLeft size={18} />
-          </button>
-          <strong aria-live="polite">{monthName}</strong>
-          <button type="button" onClick={() => changeMonth(1)} aria-label="Next month">
-            <ChevronRight size={18} />
-          </button>
-          <button
-            type="button"
-            className="attendance-current-month"
-            onClick={showCurrentMonth}
-            disabled={isCurrentMonth}
-          >
-            Current month
-          </button>
         </div>
       </div>
 
@@ -358,7 +364,37 @@ export default function AttendancePage({ onBack }) {
               <h2>Monthly attendance</h2>
               <p>{isLoading ? 'Loading attendance records…' : error ? 'Attendance records unavailable' : `${knownRecordDays} recorded ${knownRecordDays === 1 ? 'day' : 'days'} in ${monthName}`}</p>
             </div>
-            <span className="attendance-panel-month">{monthName}</span>
+            <div className="attendance-month-control" aria-label="Attendance month">
+              <button type="button" onClick={() => changeMonth(-1)} aria-label="Previous month">
+                <ChevronLeft size={18} />
+              </button>
+              <label className="attendance-month-picker">
+                <CalendarDays size={15} aria-hidden="true" />
+                <input
+                  type="month"
+                  value={monthInputValue(monthDate)}
+                  max={monthInputValue(today)}
+                  onChange={(event) => handleMonthChange(event.target.value)}
+                  aria-label="Choose attendance month"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => changeMonth(1)}
+                aria-label="Next month"
+                disabled={isCurrentMonth || isFutureMonth}
+              >
+                <ChevronRight size={18} />
+              </button>
+              <button
+                type="button"
+                className="attendance-current-month"
+                onClick={showCurrentMonth}
+                disabled={isCurrentMonth}
+              >
+                Current month
+              </button>
+            </div>
           </div>
 
           <div className="attendance-calendar-scroll">
@@ -401,7 +437,7 @@ export default function AttendancePage({ onBack }) {
                       aria-label={tooltip}
                       aria-pressed={Boolean(isSelected)}
                       disabled={isLoading || Boolean(error)}
-                      style={{ gridColumn: Math.floor(index / 7) + 1, gridRow: (index % 7) + 1 }}
+                      style={{ gridColumn: (index % 7) + 1, gridRow: Math.floor(index / 7) + 1 }}
                     >
                       <span>{item.date.getDate()}</span>
                     </button>

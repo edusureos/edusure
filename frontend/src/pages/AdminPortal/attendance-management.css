@@ -1,8 +1,8 @@
 .att-module {
   --att-navy: #0a192f;
   --att-slate: #1e293b;
-  --att-blue: #0284c7;
-  --att-light-blue: #e0f2fe;
+  --att-blue: #977016;
+  --att-light-blue: #fff3d3;
   --att-muted: #718096;
   min-width: 0;
   animation: att-enter 180ms ease-out both;
@@ -49,6 +49,9 @@
 .att-feature-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
 .att-feature-card {
+  --clay-card-bg: var(--clay-surface);
+  --clay-edge-start: rgb(191 148 45 / 34%);
+  --clay-edge-end: rgb(36 57 84 / 20%);
   position: relative;
   display: flex;
   min-width: 0;
@@ -56,10 +59,12 @@
   align-items: flex-start;
   gap: 14px;
   padding: 20px;
-  border: 1px solid #e3eaf0;
+  border: 1px solid transparent;
   border-radius: 15px;
-  background: #fff;
-  box-shadow: 0 3px 12px #0a192f08;
+  background:
+    linear-gradient(var(--clay-card-bg), var(--clay-card-bg)) padding-box,
+    linear-gradient(135deg, var(--clay-edge-start), rgb(255 255 255 / 92%) 48%, var(--clay-edge-end)) border-box;
+  box-shadow: var(--clay-shadow-raised);
   color: inherit;
   cursor: pointer;
   text-align: left;
@@ -68,15 +73,15 @@
 
 .att-feature-card:hover {
   transform: translateY(-2px);
-  border-color: #b7d8ed;
-  box-shadow: 0 9px 22px #0a192f12;
+  border-color: #dec77f;
+  box-shadow: 11px 11px 20px rgb(105 91 61 / 18%), -8px -8px 18px rgb(255 255 255 / 98%);
 }
 
 .att-feature-card:focus-visible,
 .att-module button:focus-visible,
 .att-module input:focus-visible,
 .att-module select:focus-visible {
-  outline: 3px solid #0284c733;
+  outline: 3px solid #97701633;
   outline-offset: 2px;
 }
 
@@ -86,9 +91,9 @@
   height: 44px;
   flex: 0 0 44px;
   place-items: center;
-  border: 1px solid #cce9f8;
+  border: 1px solid #ead8a3;
   border-radius: 12px;
-  background: #eff9fe;
+  background: #fff8e6;
   color: var(--att-blue);
 }
 
@@ -132,7 +137,7 @@
 }
 .att-back-button { min-height: 28px; margin: 0 0 8px -8px; padding: 0 8px; border-color: transparent; color: #52657b; }
 .att-back-button:hover,
-.att-secondary-button:hover { border-color: #c5dced; background: #f5fafe; color: var(--att-blue); }
+.att-secondary-button:hover { border-color: #dec77f; background: #fffaf0; color: var(--att-blue); }
 .att-primary-button { border-color: var(--att-navy); background: var(--att-navy); color: #fff; }
 .att-primary-button:hover { transform: translateY(-1px); background: #142b4d; }
 
@@ -144,7 +149,7 @@
   padding: 4px;
   border: 1px solid #e5ebf1;
   border-radius: 11px;
-  background: #f4f7fa;
+  background: #f5f0e4;
 }
 .att-report-tabs button {
   display: inline-flex;
@@ -165,13 +170,19 @@
 .att-report-tabs button.is-active { background: #fff; color: var(--att-navy); box-shadow: 0 2px 6px #0a192f12; }
 
 .att-filter-panel,
-.att-result-card {
+.att-result-card,
+.att-submission-date {
+  --clay-card-bg: var(--clay-surface);
+  --clay-edge-start: rgb(191 148 45 / 30%);
+  --clay-edge-end: rgb(36 57 84 / 18%);
   min-width: 0;
   padding: 17px;
-  border: 1px solid #e4eaf0;
+  border: 1px solid transparent;
   border-radius: 13px;
-  background: #fff;
-  box-shadow: 0 2px 9px #0a192f07;
+  background:
+    linear-gradient(var(--clay-card-bg), var(--clay-card-bg)) padding-box,
+    linear-gradient(135deg, var(--clay-edge-start), rgb(255 255 255 / 92%) 48%, var(--clay-edge-end)) border-box;
+  box-shadow: var(--clay-shadow-raised);
 }
 .att-filter-panel { margin-bottom: 16px; }
 .att-filter-heading { align-items: center; margin-bottom: 14px; }
@@ -212,7 +223,7 @@
 .att-filter-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 .att-filter-actions .att-primary-button { min-width: 128px; }
 .att-filter-error { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; color: #b42318; font-size: 11px; }
-.att-submission-date { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 15px; padding: 14px; border: 1px solid #e4eaf0; border-radius: 12px; background: #fff; }
+.att-submission-date { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 15px; padding: 14px; }
 .att-submission-date label { display: grid; width: min(260px, 100%); gap: 6px; }
 .att-submission-date label > span { color: #53647a; font-size: 10px; font-weight: 700; }
 .att-submission-date input { height: 36px; padding: 0 10px; border: 1px solid #dce4eb; border-radius: 8px; background: #fff; color: #28384d; font: inherit; font-size: 11px; }
@@ -228,7 +239,7 @@
 .att-live-badge { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border: 1px solid #d8e9df; border-radius: 20px; background: #f3faf5; color: #39704b; font-size: 9px; font-weight: 700; white-space: nowrap; }
 .att-result-card > h3 { margin-bottom: 13px; }
 .att-metrics-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-.att-metric-card { display: flex; min-width: 0; flex-direction: column; gap: 7px; padding: 14px; border: 1px solid #e4ebf1; border-radius: 11px; background: linear-gradient(135deg, #fff, #f8fbfd); }
+.att-metric-card { display: flex; min-width: 0; flex-direction: column; gap: 7px; padding: 14px; border: 1px solid #eadfbe; border-radius: 11px; background: linear-gradient(135deg, #fffdf8, #f8f5eb); box-shadow: 4px 4px 10px rgb(105 91 61 / 10%), -4px -4px 10px rgb(255 255 255 / 96%); }
 .att-metric-card > span { color: #67778a; font-size: 10px; font-weight: 650; }
 .att-metric-card > strong { color: var(--att-navy); font-size: 23px; font-weight: 800; letter-spacing: -.4px; }
 .att-metric-card > small { color: #8794a3; font-size: 9px; }
@@ -240,11 +251,11 @@
 .att-report-table tbody tr:hover { background: #f8fbfd; }
 .att-table-link { padding: 0; border: 0; background: none; color: var(--att-blue); cursor: pointer; font-size: 10px; font-weight: 700; }
 .att-empty-panel { display: grid; justify-items: center; gap: 7px; padding: 30px 16px; color: #526278; text-align: center; }
-.att-empty-panel > span { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 12px; background: #eef7fc; color: var(--att-blue); }
+.att-empty-panel > span { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 12px; background: #fff3d3; color: var(--att-blue); }
 .att-empty-panel > strong { color: #26384e; font-size: 12px; }
 .att-empty-panel p { max-width: 440px; margin: 0; color: #7a8796; font-size: 10px; line-height: 1.6; }
 .att-loading-panel { display: flex; min-height: 100px; align-items: center; justify-content: center; gap: 10px; color: #68788c; font-size: 11px; }
-.att-spinner { width: 17px; height: 17px; border: 2px solid #d7e8f3; border-top-color: var(--att-blue); border-radius: 50%; animation: att-spin 700ms linear infinite; }
+.att-spinner { width: 17px; height: 17px; border: 2px solid #eadfbe; border-top-color: var(--att-blue); border-radius: 50%; animation: att-spin 700ms linear infinite; }
 .att-error-panel { display: flex; align-items: center; gap: 10px; padding: 13px; border: 1px solid #f1d0cd; border-radius: 10px; background: #fff8f7; color: #b42318; }
 .att-error-panel > div { flex: 1; }
 .att-error-panel strong { font-size: 11px; }

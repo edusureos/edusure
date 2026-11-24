@@ -177,7 +177,7 @@ export default function PortalPage({ onLogout, userId, profile = {}, role, token
   }
 
   return (
-    <div className="min-h-screen w-full bg-slate-50/60 flex flex-col text-slate-800 antialiased font-sans relative selection:bg-emerald-500/15 selection:text-emerald-900">
+    <div className="min-h-screen w-full bg-slate-50/60 flex flex-col text-slate-800 antialiased font-sans relative selection:bg-pla-500/15 selection:text-pla-900">
       <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none opacity-60" />
 
       <header className="w-full border-b border-slate-200/80 bg-white/90 backdrop-blur-md sticky top-0 z-30 px-3 sm:px-8 py-3 flex items-center justify-between">
@@ -199,7 +199,7 @@ export default function PortalPage({ onLogout, userId, profile = {}, role, token
             }`}
           >
             <LayoutDashboard
-              className={`w-4 h-4 ${isDashboardOpen ? 'text-emerald-400' : 'text-slate-500'}`}
+              className={`w-4 h-4 ${isDashboardOpen ? 'text-pla-400' : 'text-slate-500'}`}
             />
             <span className="max-[359px]:hidden">Dashboard</span>
           </button>
@@ -217,7 +217,7 @@ export default function PortalPage({ onLogout, userId, profile = {}, role, token
             aria-label="Profile"
             className={`flex items-center gap-1.5 sm:gap-2.5 px-2.5 sm:px-3 py-1.5 rounded-xl border transition-all duration-200 cursor-pointer text-xs sm:text-sm font-semibold ${
               isProfileOpen
-                ? 'border-emerald-200 bg-emerald-50/70 text-slate-900 shadow-xs'
+                ? 'border-pla-200 bg-pla-50/70 text-slate-900 shadow-xs'
                 : 'border-slate-200/90 hover:border-slate-300 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs'
             }`}
           >
@@ -251,9 +251,9 @@ export default function PortalPage({ onLogout, userId, profile = {}, role, token
         </div>
 
         <div className="relative isolate overflow-hidden w-full bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-5 clay-tone-mint">
-          <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-[#2E7D32] to-emerald-300" />
+          <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-[var(--color-edusure-green)] to-pla-300" />
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl border border-emerald-100 bg-emerald-50 text-[#2E7D32] flex items-center justify-center shrink-0">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl border border-pla-100 bg-pla-50 text-[var(--color-edusure-green)] flex items-center justify-center shrink-0">
               <User className="w-7 h-7" />
             </div>
             <div className="space-y-1">
@@ -275,12 +275,12 @@ export default function PortalPage({ onLogout, userId, profile = {}, role, token
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search..."
                 aria-label="Search academic records"
-                className="w-full sm:w-48 py-2.5 pl-9.5 pr-3 text-xs bg-slate-50 border border-slate-200/80 rounded-xl focus:bg-white focus:border-[#2E7D32] focus:ring-3 focus:ring-emerald-500/15 outline-none transition-all shadow-2xs"
+                className="w-full sm:w-48 py-2.5 pl-9.5 pr-3 text-xs bg-slate-50 border border-slate-200/80 rounded-xl focus:bg-white focus:border-pla-600 focus:ring-3 focus:ring-pla-500/15 outline-none transition-all shadow-2xs"
               />
             </div>
 
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200/80 px-3 py-2.5 rounded-xl shadow-2xs">
-              <Calendar className="w-3.5 h-3.5 text-[#2E7D32]" />
+              <Calendar className="w-3.5 h-3.5 text-pla-700" />
               <span>{todayLabel}</span>
             </div>
 
@@ -358,7 +358,7 @@ export default function PortalPage({ onLogout, userId, profile = {}, role, token
               <button
                 type="button"
                 onClick={() => setActiveModal('academic-calendar')}
-                className="font-bold text-[#0A192F] hover:text-[#2E7D32] inline-flex items-center gap-1 transition-colors cursor-pointer"
+                className="font-bold text-[#0A192F] hover:text-pla-700 inline-flex items-center gap-1 transition-colors cursor-pointer"
               >
                 <span>Full Calendar</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -369,7 +369,7 @@ export default function PortalPage({ onLogout, userId, profile = {}, role, token
           <div className="lg:col-span-6 bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm flex flex-col clay-tone-lilac">
             <SectionHeading
               icon={LayoutDashboard}
-              iconWrap="bg-emerald-50 text-[#2E7D32] border-emerald-100"
+              iconWrap="bg-pla-50 text-pla-700 border-pla-100"
               title="Quick Access"
               subtitle="Direct access to core academic records"
               badge="Quick links"
@@ -424,12 +424,14 @@ export default function PortalPage({ onLogout, userId, profile = {}, role, token
       >
         <div className="p-5 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#2E7D32] flex items-center justify-center border border-emerald-100">
-              <LayoutDashboard className="w-4.5 h-4.5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-[#0A192F] font-heading">Menu</h3>
-              <p className="text-[11px] text-slate-400">EduSure Portal</p>
+            <img
+              src="/prince-learning-academy-logo.jpeg"
+              alt="Prince Learning Academy logo"
+              className="w-10 h-10 shrink-0 rounded-xl border border-slate-200 bg-white p-1 object-contain"
+            />
+            <div className="min-w-0">
+              <h3 className="text-sm font-bold text-[#0A192F] font-heading">Prince Learning Academy</h3>
+              <p className="text-[11px] text-slate-400">Student Portal</p>
             </div>
           </div>
           <button
@@ -467,7 +469,7 @@ export default function PortalPage({ onLogout, userId, profile = {}, role, token
                 aria-current={isActive ? 'page' : undefined}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs sm:text-sm font-semibold transition-colors text-left cursor-pointer ${
                   isActive
-                    ? 'bg-emerald-50 text-[#2E7D32]'
+                    ? 'bg-pla-50 text-pla-700'
                     : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                 }`}
               >
@@ -478,7 +480,7 @@ export default function PortalPage({ onLogout, userId, profile = {}, role, token
           })}
         </nav>
         <div className="p-4 border-t border-slate-100 text-[11px] text-slate-400 flex items-center gap-1.5">
-          <ShieldCheck className="w-3.5 h-3.5 text-[#2E7D32]" />
+          <ShieldCheck className="w-3.5 h-3.5 text-pla-700" />
           <span>EduSure Institutional Portal</span>
         </div>
       </aside>
@@ -510,7 +512,7 @@ export default function PortalPage({ onLogout, userId, profile = {}, role, token
           </button>
         </div>
         <div className="p-5 flex-1 overflow-y-auto space-y-5">
-          <div className="p-4 rounded-2xl bg-gradient-to-b from-emerald-50/70 to-slate-50 border border-slate-100 text-center">
+          <div className="p-4 rounded-2xl bg-gradient-to-b from-pla-50/70 to-slate-50 border border-slate-100 text-center">
             <div className="w-16 h-16 rounded-full border border-slate-200 bg-white text-slate-400 flex items-center justify-center mx-auto mb-3">
               <User className="w-7 h-7" />
             </div>
@@ -628,9 +630,9 @@ function AttendanceMetricCard({ onClick, summary, isLoading, error }) {
       type="button"
       onClick={onClick}
       title={error || 'View your monthly attendance'}
-      className="group relative w-full bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-slate-300 transition-all duration-200 text-left cursor-pointer overflow-hidden flex flex-col justify-between min-h-[188px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30 clay-tone-mint"
+      className="group relative w-full bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-slate-300 transition-all duration-200 text-left cursor-pointer overflow-hidden flex flex-col justify-between min-h-[188px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pla-600/30 clay-tone-mint"
     >
-      <div className="absolute top-0 left-0 right-0 h-1 bg-[#2E7D32]" />
+      <div className="absolute top-0 left-0 right-0 h-1 bg-pla-600" />
       <div className="flex items-center gap-4 py-1">
         <div
           className="relative w-[76px] h-[76px] shrink-0"
@@ -675,9 +677,9 @@ function QuickCard({ title, detail, icon: Icon, onClick }) {
       type="button"
       onClick={onClick}
       aria-label={`${title}. ${detail}`}
-      className="group min-h-[112px] rounded-xl px-2 py-3 flex flex-col items-center justify-center gap-2 text-center transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30 cursor-pointer"
+      className="group min-h-[112px] rounded-xl px-2 py-3 flex flex-col items-center justify-center gap-2 text-center transition-colors hover:bg-pla-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pla-600/30 cursor-pointer"
     >
-      <Icon className="w-10 h-10 text-[#0A192F] stroke-[1.7] transition-colors group-hover:text-[#2E7D32]" />
+      <Icon className="w-10 h-10 text-[#0A192F] stroke-[1.7] transition-colors group-hover:text-pla-700" />
       <span className="text-xs sm:text-[13px] font-semibold text-slate-700 transition-colors group-hover:text-[#0A192F]">
         {title}
       </span>
