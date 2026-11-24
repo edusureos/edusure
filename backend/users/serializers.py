@@ -11,6 +11,14 @@ class CustomLoginSerializer(TokenObtainPairSerializer):
         data = super().validate(attrs) 
         
         user = self.user
+        if not user.is_superuser and user.username and len(user.username) == 10 and user.username.isdigit():
+            expected_role = {'0': User.Role.STUDENT, '1': User.Role.TEACHER, '2': User.Role.SCHOOL_ADMIN, '9': User.Role.SCHOOL_ADMIN}.get(user.username[3])
+            if expected_role and user.role != expected_role:
+                user.role = expected_role
+                user.save(update_fields=['role'])
+        if user.is_superuser and user.role not in (User.Role.SUPER_ADMIN, User.Role.SCHOOL_ADMIN):
+            user.role = User.Role.SUPER_ADMIN
+            user.save(update_fields=['role'])
         
         # Safely fetch phone number from User or StudentProfile
         phone = getattr(user, 'phone_number', '')

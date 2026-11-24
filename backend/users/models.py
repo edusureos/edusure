@@ -56,7 +56,7 @@ class User(AbstractUser):
                     self.role = self.Role.STUDENT
                 elif role_digit == '1':
                     self.role = self.Role.TEACHER
-                elif role_digit == '2':
+                elif role_digit in ('2', '9'):
                     self.role = self.Role.SCHOOL_ADMIN
 
         super().save(*args, **kwargs)

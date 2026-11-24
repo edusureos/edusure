@@ -652,11 +652,124 @@ function NotConnectedPage({ active }) {
   return <><PageHeading title={pageCopy[0].replace(/^No /, '').replace(/\.$/, '')} description="This section is ready for a verified school data integration." /><section className="adm-card adm-disconnected-card"><EmptyState icon={Icon} title={copy[0]} description={copy[1]} /><div className="adm-unavailable-label"><CircleAlert size={14} /> Not connected</div></section></>;
 }
 
-function SettingsPage({ profile, previewMode }) {
+function AdminChangePasswordCard({ token, previewMode, onPasswordChanged }) {
+  const [form, setForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    if (previewMode) return;
+    if (form.new_password !== form.confirm_password) {
+      setError('New password and confirm password do not match.');
+      return;
+    }
+    if (form.new_password.length < 8) {
+      setError('Password must be at least 8 characters long.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const loginCheck = await fetch('/api/auth/login/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: form.username, password: form.current_password }),
+      });
+      if (!loginCheck.ok) {
+        throw new Error('Current password is incorrect.');
+      }
+      const res = await fetch('/api/auth/change-password/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: \Bearer \,
+        },
+        body: JSON.stringify({
+          new_password: form.new_password,
+          confirm_password: form.confirm_password,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.detail || data.new_password?.[0] || data.password?.[0] || 'Failed to update password.');
+      }
+      setForm({ current_password: '', new_password: '', confirm_password: '' });
+      setSuccess('Password updated successfully.');
+      if (onPasswordChanged) onPasswordChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to update password.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="adm-panel" style={{ marginTop: '1.25rem', maxWidth: '32rem' }}>
+      <div className="adm-panel-header">
+        <div>
+          <h3>Change Admin Password</h3>
+          <p>Update your administrator login password directly from the portal.</p>
+        </div>
+      </div>
+      <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '0.85rem', padding: '1rem 1.25rem 1.25rem' }}>
+        {error && <div className="adm-state-error" style={{ padding: '0.65rem 0.85rem', borderRadius: '0.5rem', fontSize: '0.85rem' }} role="alert">{error}</div>}
+        {success && <div className="adm-toast" style={{ margin: 0 }} role="status"><Check size={15} />{success}</div>}
+        <label style={{ display: 'grid', gap: '0.35rem', fontSize: '0.85rem', fontWeight: 600 }}>
+          <span>Current Password</span>
+          <input
+            type="password"
+            required
+            disabled={previewMode || busy}
+            value={form.current_password}
+            onChange={(e) => setForm((prev) => ({ ...prev, current_password: e.target.value }))}
+            placeholder="Enter current password"
+            className="adm-input"
+          />
+        </label>
+        <label style={{ display: 'grid', gap: '0.35rem', fontSize: '0.85rem', fontWeight: 600 }}>
+          <span>New Password</span>
+          <input
+            type="password"
+            required
+            disabled={previewMode || busy}
+            value={form.new_password}
+            onChange={(e) => setForm((prev) => ({ ...prev, new_password: e.target.value }))}
+            placeholder="Min 8 chars (A-Z, a-z, 0-9, @#$)"
+            className="adm-input"
+          />
+        </label>
+        <label style={{ display: 'grid', gap: '0.35rem', fontSize: '0.85rem', fontWeight: 600 }}>
+          <span>Confirm New Password</span>
+          <input
+            type="password"
+            required
+            disabled={previewMode || busy}
+            value={form.confirm_password}
+            onChange={(e) => setForm((prev) => ({ ...prev, confirm_password: e.target.value }))}
+            placeholder="Re-enter new password"
+            className="adm-input"
+          />
+        </label>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
+          <Button type="submit" disabled={previewMode || busy}>
+            <LockKeyhole size={15} />
+            {busy ? 'Updating...' : 'Update Password'}
+          </Button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+function SettingsPage({ profile, token, previewMode, onPasswordChanged }) {
   return (
     <>
       <PageHeading title="Settings" description={previewMode ? 'No account is connected to this frontend-only preview.' : 'Account and access details from the authenticated EduSure session.'} />
       <section className="adm-card adm-settings-card"><div className="adm-card-heading"><div><span className="adm-section-kicker">ACCOUNT</span><h2>Administrator profile</h2><p>{previewMode ? 'Preview mode does not authenticate or load account details.' : 'Identity is provided by EduSure authentication.'}</p></div><span className="adm-settings-mark"><ShieldCheck size={18} /></span></div><div className="adm-account-list"><div><span>Account ID</span><strong>{previewMode ? 'Not connected' : profile.username || 'Not available'}</strong></div><div><span>Role</span><strong>{previewMode ? 'Preview only' : profile.role}</strong></div><div><span>School ID</span><strong>{previewMode ? 'Not connected' : profile.school_id ?? 'Not available'}</strong></div><div><span>Authentication</span><strong className="adm-auth-status">{previewMode ? 'No sign-in in preview' : <><i /> Verified session</>}</strong></div></div><div className="adm-unavailable-label"><CircleAlert size={14} />{previewMode ? 'This preview is read-only and uses no school data.' : 'School preferences are not connected to an API.'}</div></section>
+      <AdminChangePasswordCard token={token} previewMode={previewMode} onPasswordChanged={onPasswordChanged} />
     </>
   );
 }
@@ -908,7 +1021,7 @@ export default function AdminDashboard({ onLogout, previewMode = false }) {
           />}
           {active === 'fees' && <FeeManagementPage token={auth.token} previewMode={previewMode} stats={stats} statsLoading={statsLoading} statsError={statsError} onRefreshStats={refreshDashboard} />}
           {['timetable', 'examinations', 'reports', 'calendar'].includes(active) && <NotConnectedPage active={active} />}
-          {active === 'settings' && <SettingsPage profile={auth.profile} previewMode={previewMode} />}
+          {active === 'settings' && <SettingsPage profile={auth.profile} token={auth.token} previewMode={previewMode} onPasswordChanged={() => setNotice('Admin password updated successfully.')} />}
           <footer className="adm-footer">EduSure <span>·</span> Admin workspace</footer>
         </div>
       </main>

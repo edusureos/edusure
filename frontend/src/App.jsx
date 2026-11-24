@@ -5,6 +5,22 @@ import PortalPage from './Edusure/PortalPage';
 import AdminDashboard from './pages/AdminPortal/AdminDashboard';
 
 const adminRoles = new Set(['SCHOOL_ADMIN', 'SUPER_ADMIN']);
+const portalRoles = new Set(['STUDENT', 'TEACHER']);
+
+function assertRoleMatchesId(username, role) {
+  if (/^\d{10}$/.test(username || '')) {
+    const digit = username[3];
+    if (digit === '0' && role !== 'STUDENT') {
+      throw new Error('Account role mismatch: Student ID cannot access non-student role.');
+    }
+    if (digit === '1' && role !== 'TEACHER') {
+      throw new Error('Account role mismatch: Teacher ID cannot access non-teacher role.');
+    }
+    if ((digit === '2' || digit === '9') && !adminRoles.has(role)) {
+      throw new Error('Account role mismatch: Admin ID is not assigned an admin role.');
+    }
+  }
+}
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('login');
@@ -37,9 +53,17 @@ export default function App() {
       }
       if (!profile?.role) throw new Error('Your account role could not be verified.');
 
-      setSignedInUserId(profile.username || user?.userId || '');
+      const resolvedUsername = profile.username || user?.userId || '';
+      assertRoleMatchesId(resolvedUsername, profile.role);
+      setSignedInUserId(resolvedUsername);
       setSignedInRole(profile.role);
-      setCurrentPage(adminRoles.has(profile.role) ? 'admin' : 'portal');
+      if (adminRoles.has(profile.role)) {
+        setCurrentPage('admin');
+      } else if (portalRoles.has(profile.role)) {
+        setCurrentPage('portal');
+      } else {
+        throw new Error('Unauthorized account role.');
+      }
     } catch (error) {
       setSignedInToken('');
       setSignedInRole('');

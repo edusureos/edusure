@@ -10,11 +10,11 @@
     },
     {
       "source": "/admin-portal",
-      "destination": "/admin-portal.html"
+      "destination": "/index.html"
     },
     {
       "source": "/admin-portal/:path*",
-      "destination": "/admin-portal.html"
+      "destination": "/index.html"
     },
     {
       "source": "/(.*)",
