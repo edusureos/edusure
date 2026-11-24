@@ -325,7 +325,7 @@ function MetricCard({ icon: Icon, label, value, detail, onClick }) {
   return <button className="adm-metric-card" onClick={onClick}><span className="adm-metric-icon"><Icon size={18} /></span><span className="adm-metric-label">{label}</span><strong>{value}</strong><span className="adm-metric-detail">{detail}</span><ArrowRight size={15} className="adm-metric-arrow" /></button>;
 }
 
-function StudentPage({ resource, query, onQuery, onAdd, onEdit, onDeactivate, onRetry, onRefresh, previewMode }) {
+function StudentPage({ resource, query, onQuery, onAdd, onEdit, onDeactivate, onRetry, onRefresh, previewMode, onUpload }) {
   const [grade, setGrade] = useState('all');
   const [section, setSection] = useState('all');
   const [page, setPage] = useState(1);
