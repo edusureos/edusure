@@ -31,7 +31,6 @@ urlpatterns = [
     path('change-password/', FirstLoginPasswordChangeView.as_view(), name='change-password'),
     path('send-otp/', SendOTPView.as_view(), name='send-otp'),
     path('reset-password/', VerifyOTPAndResetPasswordView.as_view(), name='reset-password'),
-    path('firebase-login/', FirebaseLoginView.as_view(), name='firebase-login'),
 
     # User profile & management endpoints
     path('me/', UserProfileView.as_view(), name='user-profile'),
