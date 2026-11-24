@@ -652,7 +652,7 @@ function NotConnectedPage({ active }) {
   return <><PageHeading title={pageCopy[0].replace(/^No /, '').replace(/\.$/, '')} description="This section is ready for a verified school data integration." /><section className="adm-card adm-disconnected-card"><EmptyState icon={Icon} title={copy[0]} description={copy[1]} /><div className="adm-unavailable-label"><CircleAlert size={14} /> Not connected</div></section></>;
 }
 
-function AdminChangePasswordCard({ token, previewMode, onPasswordChanged }) {
+function AdminChangePasswordCard({ username, token, previewMode, onPasswordChanged }) {
   const [form, setForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -676,7 +676,7 @@ function AdminChangePasswordCard({ token, previewMode, onPasswordChanged }) {
       const loginCheck = await fetch('/api/auth/login/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: form.username, password: form.current_password }),
+        body: JSON.stringify({ username: username, password: form.current_password }),
       });
       if (!loginCheck.ok) {
         throw new Error('Current password is incorrect.');
@@ -685,7 +685,7 @@ function AdminChangePasswordCard({ token, previewMode, onPasswordChanged }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: \Bearer \,
+          Authorization: 'Bearer ' + token,
         },
         body: JSON.stringify({
           new_password: form.new_password,
@@ -769,7 +769,7 @@ function SettingsPage({ profile, token, previewMode, onPasswordChanged }) {
     <>
       <PageHeading title="Settings" description={previewMode ? 'No account is connected to this frontend-only preview.' : 'Account and access details from the authenticated EduSure session.'} />
       <section className="adm-card adm-settings-card"><div className="adm-card-heading"><div><span className="adm-section-kicker">ACCOUNT</span><h2>Administrator profile</h2><p>{previewMode ? 'Preview mode does not authenticate or load account details.' : 'Identity is provided by EduSure authentication.'}</p></div><span className="adm-settings-mark"><ShieldCheck size={18} /></span></div><div className="adm-account-list"><div><span>Account ID</span><strong>{previewMode ? 'Not connected' : profile.username || 'Not available'}</strong></div><div><span>Role</span><strong>{previewMode ? 'Preview only' : profile.role}</strong></div><div><span>School ID</span><strong>{previewMode ? 'Not connected' : profile.school_id ?? 'Not available'}</strong></div><div><span>Authentication</span><strong className="adm-auth-status">{previewMode ? 'No sign-in in preview' : <><i /> Verified session</>}</strong></div></div><div className="adm-unavailable-label"><CircleAlert size={14} />{previewMode ? 'This preview is read-only and uses no school data.' : 'School preferences are not connected to an API.'}</div></section>
-      <AdminChangePasswordCard token={token} previewMode={previewMode} onPasswordChanged={onPasswordChanged} />
+      <AdminChangePasswordCard username={profile?.username} token={token} previewMode={previewMode} onPasswordChanged={onPasswordChanged} />
     </>
   );
 }
