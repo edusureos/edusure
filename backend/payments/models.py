@@ -3,6 +3,22 @@ import uuid
 from decimal import Decimal
 from django.conf import settings
 from django.db import models
+from django.core.validators import MaxValueValidator, MinValueValidator
+
+
+FEE_PERIOD_TYPES = [
+    ("ONE_TIME", "One time"),
+    ("MONTHLY", "Monthly"),
+    ("QUARTERLY", "Quarterly"),
+    ("HALF_YEARLY", "Half-yearly"),
+    ("YEARLY", "Yearly"),
+]
+
+LATE_PENALTY_PERIODS = [
+    ("ONE_TIME", "One time"),
+    ("PER_DAY", "Per day"),
+    ("PER_WEEK", "Per week"),
+]
 
 
 class SchoolPaymentConfig(models.Model):
@@ -49,6 +65,13 @@ class FeeStructure(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     late_fee = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
     due_date = models.DateField()
+    schedule_start_month = models.DateField(null=True, blank=True)
+    schedule_end_month = models.DateField(null=True, blank=True)
+    period_type = models.CharField(max_length=20, choices=FEE_PERIOD_TYPES, default="ONE_TIME")
+    penalty_period = models.CharField(max_length=20, choices=LATE_PENALTY_PERIODS, default="ONE_TIME")
+    due_day = models.PositiveSmallIntegerField(
+        null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(31)]
+    )
     academic_year = models.CharField(max_length=20, default="2026-27")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -91,6 +114,13 @@ class StudentFeeInvoice(models.Model):
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
     due_date = models.DateField()
+    schedule_start_month = models.DateField(null=True, blank=True)
+    schedule_end_month = models.DateField(null=True, blank=True)
+    period_type = models.CharField(max_length=20, choices=FEE_PERIOD_TYPES, default="ONE_TIME")
+    penalty_period = models.CharField(max_length=20, choices=LATE_PENALTY_PERIODS, default="ONE_TIME")
+    due_day = models.PositiveSmallIntegerField(
+        null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(31)]
+    )
     status = models.CharField(max_length=25, choices=Status.choices, default=Status.PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

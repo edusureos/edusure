@@ -1,6 +1,7 @@
 import calendar
 import datetime
 import io
+import math
 import os
 import random
 import re
@@ -483,6 +484,15 @@ class ClassAttendanceView(APIView):
         except ValueError:
             return Response({"detail": "Invalid date format. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
 
+        teacher_scope = _teacher_attendance_scope(request.user)
+        if teacher_scope is not None and (
+            class_grade != teacher_scope[0]
+            or (section and teacher_scope[1] and section != teacher_scope[1])
+        ):
+            return Response({"detail": "You are not assigned to this class."}, status=status.HTTP_403_FORBIDDEN)
+        if teacher_scope is not None and teacher_scope[1]:
+            section = teacher_scope[1]
+
         students_qs = StudentProfile.objects.select_related('user').filter(
             user__school_id=school_id,
             user__is_active=True,
@@ -542,20 +552,26 @@ class ClassAttendanceView(APIView):
         records = serializer.validated_data['records']
 
         student_usernames = [item['student_id'] for item in records]
+        teacher_scope = _teacher_attendance_scope(request.user)
+        student_filters = {
+            'username__in': student_usernames,
+            'school_id': school_id,
+            'role': User.Role.STUDENT,
+        }
+        if teacher_scope is not None:
+            student_filters['student_profile__class_grade'] = teacher_scope[0]
+            if teacher_scope[1] is not None:
+                student_filters['student_profile__section'] = teacher_scope[1]
         valid_students = {
             u.username: u
-            for u in User.objects.filter(
-                username__in=student_usernames,
-                school_id=school_id,
-                role=User.Role.STUDENT,
-            )
+            for u in User.objects.filter(**student_filters)
         }
 
         invalid_ids = [sid for sid in student_usernames if sid not in valid_students]
         if invalid_ids:
             return Response(
-                {"detail": f"Invalid student IDs for your school: {', '.join(invalid_ids)}"},
-                status=status.HTTP_400_BAD_REQUEST,
+                {"detail": "One or more students are outside your school or assigned class."},
+                status=status.HTTP_403_FORBIDDEN if teacher_scope is not None else status.HTTP_400_BAD_REQUEST,
             )
 
         with transaction.atomic():
@@ -580,6 +596,210 @@ class ClassAttendanceView(APIView):
         )
 
 
+def _teacher_attendance_scope(user):
+    if user.role != User.Role.TEACHER:
+        return None
+    profile = TeacherProfile.objects.filter(user=user).only('class_teacher_of').first()
+    assignment = (profile.class_teacher_of if profile else '').strip()
+    if not assignment:
+        return ('', None)
+    if '-' in assignment:
+        class_grade, section = assignment.rsplit('-', 1)
+        return (class_grade.strip(), section.strip())
+    return (assignment, None)
+
+
+class AttendanceReportsView(APIView):
+    permission_classes = [IsAuthenticated, IsTeacherOrSchoolAdmin]
+
+    @extend_schema(summary="Get date-filtered attendance reports")
+    def get(self, request):
+        school_id = request.user.school_id
+        if school_id is None:
+            return Response(
+                {"detail": "Your account is not associated with a school."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        today = datetime.date.today()
+        start_date_value = request.query_params.get('start_date') or today.replace(day=1).isoformat()
+        end_date_value = request.query_params.get('end_date') or today.isoformat()
+        if (
+            not re.fullmatch(r'\d{4}-\d{2}-\d{2}', start_date_value)
+            or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', end_date_value)
+        ):
+            return Response({"detail": "Dates must use YYYY-MM-DD format."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            start_date = datetime.date.fromisoformat(start_date_value)
+            end_date = datetime.date.fromisoformat(end_date_value)
+        except ValueError:
+            return Response({"detail": "Dates must use YYYY-MM-DD format."}, status=status.HTTP_400_BAD_REQUEST)
+        if start_date > end_date:
+            return Response({"detail": "Start date must not be after end date."}, status=status.HTTP_400_BAD_REQUEST)
+
+        report_type = request.query_params.get('report_type', 'summary')
+        if report_type not in {'student', 'class', 'summary'}:
+            return Response({"detail": "report_type must be student, class, or summary."}, status=status.HTTP_400_BAD_REQUEST)
+
+        operator = request.query_params.get('comparison', '').strip()
+        threshold = None
+        if operator:
+            if operator not in {'lt', 'gt'}:
+                return Response({"detail": "comparison must be lt or gt."}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                threshold = float(request.query_params.get('percentage', ''))
+            except (TypeError, ValueError):
+                return Response({"detail": "percentage must be a number from 0 to 100."}, status=status.HTTP_400_BAD_REQUEST)
+            if not math.isfinite(threshold) or not 0 <= threshold <= 100:
+                return Response({"detail": "percentage must be a number from 0 to 100."}, status=status.HTTP_400_BAD_REQUEST)
+        elif request.query_params.get('percentage'):
+            return Response({"detail": "Choose a comparison before entering a percentage."}, status=status.HTTP_400_BAD_REQUEST)
+
+        teacher_scope = _teacher_attendance_scope(request.user)
+        profiles = StudentProfile.objects.filter(
+            user__school_id=school_id,
+            user__role=User.Role.STUDENT,
+            user__is_active=True,
+        )
+        if teacher_scope is not None:
+            profiles = profiles.filter(class_grade=teacher_scope[0])
+            if teacher_scope[1] is not None:
+                profiles = profiles.filter(section=teacher_scope[1])
+
+        class_options = {}
+        for class_grade, section in profiles.values_list('class_grade', 'section').distinct().order_by('class_grade', 'section'):
+            if not class_grade:
+                continue
+            class_options.setdefault(class_grade, set())
+            if section:
+                class_options[class_grade].add(section)
+
+        class_grade = request.query_params.get('class_grade', '').strip()
+        section = request.query_params.get('section', '').strip()
+        if class_grade and class_grade not in class_options:
+            return Response({"detail": "The selected class is not available to your account."}, status=status.HTTP_400_BAD_REQUEST)
+        if section and (not class_grade or section not in class_options.get(class_grade, set())):
+            return Response({"detail": "The selected section is not available for this class."}, status=status.HTTP_400_BAD_REQUEST)
+        if class_grade:
+            profiles = profiles.filter(class_grade=class_grade)
+        if section:
+            profiles = profiles.filter(section=section)
+
+        search = request.query_params.get('search', '').strip()
+        if search:
+            profiles = profiles.filter(
+                Q(user__username__icontains=search)
+                | Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+            )
+
+        profile_rows = list(profiles.select_related('user').order_by('class_grade', 'section', 'roll_number', 'first_name'))
+        profile_by_id = {profile.user_id: profile for profile in profile_rows}
+        attendance_by_student = {user_id: [] for user_id in profile_by_id}
+        records = Attendance.objects.filter(
+            school_id=school_id,
+            student_id__in=profile_by_id,
+            date__gte=start_date,
+            date__lte=end_date,
+        ).order_by('date', 'student__username')
+        for record in records:
+            attendance_by_student[record.student_id].append(record)
+
+        students = []
+        for profile in profile_rows:
+            student_records = attendance_by_student[profile.user_id]
+            present = sum(record.status in (Attendance.Status.PRESENT, Attendance.Status.LATE) for record in student_records)
+            absent = sum(record.status == Attendance.Status.ABSENT for record in student_records)
+            medical = sum(record.status == Attendance.Status.MEDICAL for record in student_records)
+            total_days = len(student_records)
+            exact_percentage = (present / total_days) * 100 if total_days else None
+            percentage = round(exact_percentage, 1) if exact_percentage is not None else None
+            if threshold is not None and (
+                exact_percentage is None
+                or (operator == 'lt' and exact_percentage >= threshold)
+                or (operator == 'gt' and exact_percentage <= threshold)
+            ):
+                continue
+            students.append({
+                'student_id': profile.user.username,
+                'name': f'{profile.first_name} {profile.last_name}'.strip() or profile.user.username,
+                'roll_number': profile.roll_number,
+                'class_grade': profile.class_grade,
+                'section': profile.section,
+                'total_days': total_days,
+                'present_days': present,
+                'absent_days': absent,
+                'medical_days': medical,
+                'attendance_percentage': percentage,
+            })
+
+        class_totals = {}
+        for student in students:
+            key = (student['class_grade'], student['section'])
+            group = class_totals.setdefault(key, {
+                'class_grade': key[0],
+                'section': key[1],
+                'total_students': 0,
+                'total_days': 0,
+                'present': 0,
+                'absent': 0,
+                'medical': 0,
+            })
+            group['total_students'] += 1
+            group['total_days'] += student['total_days']
+            group['present'] += student['present_days']
+            group['absent'] += student['absent_days']
+            group['medical'] += student['medical_days']
+        class_wise = list(class_totals.values())
+        for group in class_wise:
+            group['attendance_percentage'] = (
+                round((group['present'] / group['total_days']) * 100, 1) if group['total_days'] else None
+            )
+
+        total_days = sum(student['total_days'] for student in students)
+        total_present = sum(student['present_days'] for student in students)
+        selected_student_id = request.query_params.get('student_id', '').strip()
+        selected_student = next(
+            (student for student in students if student['student_id'] == selected_student_id),
+            None,
+        )
+        if selected_student_id and selected_student is None:
+            return Response({"detail": "The selected student is not available in this report."}, status=status.HTTP_400_BAD_REQUEST)
+        student_records = []
+        if selected_student:
+            student_profile = next(profile for profile in profile_rows if profile.user.username == selected_student_id)
+            student_records = [
+                {'date': record.date.isoformat(), 'status': record.status, 'remarks': record.remarks}
+                for record in reversed(attendance_by_student[student_profile.user_id])
+            ]
+
+        return Response({
+            'report_type': report_type,
+            'filters': {
+                'start_date': start_date.isoformat(),
+                'end_date': end_date.isoformat(),
+                'class_grade': class_grade,
+                'section': section,
+            },
+            'class_options': [
+                {'class_grade': grade, 'sections': sorted(sections)}
+                for grade, sections in sorted(class_options.items())
+            ],
+            'summary': {
+                'total_students': len(students),
+                'total_days': total_days,
+                'present': total_present,
+                'absent': sum(student['absent_days'] for student in students),
+                'medical': sum(student['medical_days'] for student in students),
+                'attendance_percentage': round((total_present / total_days) * 100, 1) if total_days else None,
+            },
+            'students': students,
+            'class_wise': class_wise,
+            'selected_student': selected_student,
+            'student_records': student_records,
+        }, status=status.HTTP_200_OK)
+
+
 class StudentAttendanceSummaryView(APIView):
     """Fetch attendance percentage and daily history for a student"""
 
@@ -593,9 +813,17 @@ class StudentAttendanceSummaryView(APIView):
             student_id = request.query_params.get('student_id')
             if not student_id:
                 return Response({"detail": "student_id query param is required."}, status=status.HTTP_400_BAD_REQUEST)
-            target_user = get_object_or_404(
-                User, username=student_id, school_id=user.school_id, role=User.Role.STUDENT
+            target_query = User.objects.filter(
+                username=student_id,
+                school_id=user.school_id,
+                role=User.Role.STUDENT,
             )
+            teacher_scope = _teacher_attendance_scope(user)
+            if teacher_scope is not None:
+                target_query = target_query.filter(student_profile__class_grade=teacher_scope[0])
+                if teacher_scope[1] is not None:
+                    target_query = target_query.filter(student_profile__section=teacher_scope[1])
+            target_user = get_object_or_404(target_query)
         else:
             target_user = user
 

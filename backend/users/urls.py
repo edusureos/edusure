@@ -14,6 +14,7 @@ from .views import (
     NoticeListCreateView,
     NoticeDetailView,
     ClassAttendanceView,
+    AttendanceReportsView,
     StudentAttendanceSummaryView,
     AdminDatabaseExportView,
     AdminSyncedBulkFilesView,
@@ -47,6 +48,7 @@ urlpatterns = [
     path('notices/<int:pk>/', NoticeDetailView.as_view(), name='notice-detail'),
     
     path('attendance/class/', ClassAttendanceView.as_view(), name='class-attendance'),
+    path('attendance/reports/', AttendanceReportsView.as_view(), name='attendance-reports'),
     path('attendance/summary/', StudentAttendanceSummaryView.as_view(), name='student-attendance-summary'),
     path("attendance/overview/", AdminAttendanceOverviewView.as_view(), name="attendance-overview"),
     path("attendance/monthly-register/", MonthlyAttendanceRegisterView.as_view(), name="attendance-monthly-register"),

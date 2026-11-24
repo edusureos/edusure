@@ -9,6 +9,8 @@ const adminRoles = new Set(['SCHOOL_ADMIN', 'SUPER_ADMIN']);
 export default function App() {
   const [currentPage, setCurrentPage] = useState('login');
   const [signedInUserId, setSignedInUserId] = useState('');
+  const [signedInRole, setSignedInRole] = useState('');
+  const [signedInToken, setSignedInToken] = useState('');
   const [roleError, setRoleError] = useState('');
 
   async function handleLogin(user) {
@@ -18,6 +20,7 @@ export default function App() {
     try {
       const token = window.localStorage.getItem('accessToken');
       if (!token) throw new Error('Your sign-in session is missing. Please sign in again.');
+      setSignedInToken(token);
 
       const response = await fetch('/api/users/me/', {
         headers: { Authorization: `Bearer ${token}` },
@@ -35,8 +38,11 @@ export default function App() {
       if (!profile?.role) throw new Error('Your account role could not be verified.');
 
       setSignedInUserId(profile.username || user?.userId || '');
+      setSignedInRole(profile.role);
       setCurrentPage(adminRoles.has(profile.role) ? 'admin' : 'portal');
     } catch (error) {
+      setSignedInToken('');
+      setSignedInRole('');
       setRoleError(error instanceof Error ? error.message : 'Unable to verify your account.');
       setCurrentPage('login');
     }
@@ -46,6 +52,8 @@ export default function App() {
     window.localStorage.removeItem('accessToken');
     window.localStorage.removeItem('refreshToken');
     setSignedInUserId('');
+    setSignedInRole('');
+    setSignedInToken('');
     setRoleError('');
     setCurrentPage('login');
   }
@@ -58,8 +66,14 @@ export default function App() {
     return (
       <PortalPage
         userId={signedInUserId}
+        role={signedInRole}
+        token={signedInToken}
         onLogout={() => {
           setSignedInUserId('');
+          setSignedInRole('');
+          setSignedInToken('');
+          window.localStorage.removeItem('accessToken');
+          window.localStorage.removeItem('refreshToken');
           setCurrentPage('login');
         }}
       />

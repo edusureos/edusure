@@ -33,6 +33,7 @@ from .serializers import (
     ClassFeeStructureSerializer,
     CollectOfflinePaymentSerializer,
     CreateGatewayOrderSerializer,
+    AdminStudentFeeInvoiceUpdateSerializer,
     FeeStructureSerializer,
     InitiateDirectUPISerializer,
     PaymentTransactionSerializer,
@@ -202,6 +203,11 @@ class AdminAssignFeeInvoicesView(APIView):
                 discount_amount=discount,
                 late_fee_amount=fee_structure.late_fee,
                 due_date=fee_structure.due_date,
+                schedule_start_month=fee_structure.schedule_start_month,
+                schedule_end_month=fee_structure.schedule_end_month,
+                period_type=fee_structure.period_type,
+                penalty_period=fee_structure.penalty_period,
+                due_day=fee_structure.due_day,
             )
             created_count += 1
 
@@ -226,6 +232,9 @@ class AdminInvoiceListView(APIView):
         inv_status = request.query_params.get("status")
         class_grade = request.query_params.get("class_grade")
         search = request.query_params.get("search")
+        full_name = request.query_params.get("full_name", "").strip()
+        student_id = request.query_params.get("student_id", "").strip()
+        phone = request.query_params.get("phone", "").strip()
 
         if inv_status:
             qs = qs.filter(status=inv_status)
@@ -236,9 +245,134 @@ class AdminInvoiceListView(APIView):
                 Q(invoice_number__icontains=search)
                 | Q(student__username__icontains=search)
                 | Q(student__student_profile__first_name__icontains=search)
+                | Q(student__student_profile__last_name__icontains=search)
+            )
+        if full_name:
+            for name_part in full_name.split():
+                qs = qs.filter(
+                    Q(student__student_profile__first_name__icontains=name_part)
+                    | Q(student__student_profile__last_name__icontains=name_part)
+                )
+        if student_id:
+            qs = qs.filter(
+                Q(student__username__icontains=student_id)
+                | Q(student__student_profile__admission_number__icontains=student_id)
+            )
+        if phone:
+            qs = qs.filter(
+                Q(student__student_profile__registered_phone__icontains=phone)
+                | Q(student__phone_number__icontains=phone)
             )
 
-        return Response(StudentFeeInvoiceSerializer(qs[:200], many=True).data, status=status.HTTP_200_OK)
+        if "page" in request.query_params:
+            try:
+                page = max(1, int(request.query_params.get("page", "1")))
+                page_size = min(50, max(1, int(request.query_params.get("page_size", "20"))))
+            except (TypeError, ValueError):
+                return Response(
+                    {"detail": "Page and page_size must be positive integers."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            matching_student_ids = qs.order_by().values_list("student_id", flat=True).distinct()
+            count = matching_student_ids.count()
+            offset = (page - 1) * page_size
+            student_ids = list(matching_student_ids[offset:offset + page_size])
+            page_invoices = qs.filter(student_id__in=student_ids).annotate(
+                _payment_count=Count("transactions")
+            ).order_by(
+                "student__student_profile__class_grade",
+                "student__student_profile__roll_number",
+                "student__student_profile__first_name",
+                "student__username",
+                "-created_at",
+            )
+            return Response(
+                {
+                    "count": count,
+                    "page": page,
+                    "page_size": page_size,
+                    "results": StudentFeeInvoiceSerializer(page_invoices, many=True).data,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        return Response(
+            StudentFeeInvoiceSerializer(
+            qs.annotate(_payment_count=Count("transactions"))[:200], many=True
+            ).data,
+            status=status.HTTP_200_OK,
+        )
+
+
+class AdminInvoiceDetailView(APIView):
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
+
+    def get_object(self, request, invoice_id, lock=False):
+        queryset = StudentFeeInvoice.objects.select_related(
+            "student", "student__student_profile", "fee_structure"
+        )
+        if lock:
+            queryset = queryset.select_for_update()
+        return get_object_or_404(
+            queryset,
+            id=invoice_id,
+            school_id=request.user.school_id,
+        )
+
+    @transaction.atomic
+    def patch(self, request, invoice_id):
+        invoice = self.get_object(request, invoice_id, lock=True)
+        serializer = AdminStudentFeeInvoiceUpdateSerializer(
+            invoice, data=request.data, partial=True
+        )
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        updated = serializer.save()
+        if updated.status != StudentFeeInvoice.Status.WAIVED:
+            _recalculate_invoice_status(updated)
+        return Response(StudentFeeInvoiceSerializer(updated).data, status=status.HTTP_200_OK)
+
+    @transaction.atomic
+    def post(self, request, invoice_id):
+        invoice = self.get_object(request, invoice_id, lock=True)
+        structure = invoice.fee_structure
+        if structure is None:
+            return Response(
+                {"detail": "This invoice is not linked to a reusable fee structure, so it cannot be saved as a default."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        for field in (
+            "amount",
+            "late_fee",
+            "due_date",
+            "schedule_start_month",
+            "schedule_end_month",
+            "period_type",
+            "penalty_period",
+            "due_day",
+        ):
+            setattr(
+                structure,
+                field,
+                invoice.base_amount if field == "amount"
+                else invoice.late_fee_amount if field == "late_fee"
+                else invoice.due_date if field == "due_date"
+                else getattr(invoice, field),
+            )
+        structure.save(update_fields=[
+            "amount",
+            "late_fee",
+            "due_date",
+            "schedule_start_month",
+            "schedule_end_month",
+            "period_type",
+            "penalty_period",
+            "due_day",
+        ])
+        return Response(
+            {"detail": f"Defaults for '{structure.title}' were updated for future assignments."},
+            status=status.HTTP_200_OK,
+        )
 
 
 class AdminTransactionListView(APIView):
@@ -253,12 +387,22 @@ class AdminTransactionListView(APIView):
 
         txn_status = request.query_params.get("status")
         mode = request.query_params.get("payment_mode")
+        invoice_id = request.query_params.get("invoice_id")
+        student_id = request.query_params.get("student_id")
         if txn_status:
             qs = qs.filter(status=txn_status)
         if mode:
             qs = qs.filter(payment_mode=mode)
+        if invoice_id:
+            qs = qs.filter(invoice_id=invoice_id)
+        if student_id:
+            qs = qs.filter(student__username=student_id)
 
-        return Response(PaymentTransactionSerializer(qs[:200], many=True).data, status=status.HTTP_200_OK)
+        if invoice_id or student_id:
+            transactions = qs
+        else:
+            transactions = qs[:200]
+        return Response(PaymentTransactionSerializer(transactions, many=True).data, status=status.HTTP_200_OK)
 
 
 class AdminVerifyUTRView(APIView):

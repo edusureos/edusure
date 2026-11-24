@@ -2142,6 +2142,11 @@ button:disabled {
   color: #28743a;
 }
 
+.adm-attendance-status.status-late {
+  background: #fff5e7;
+  color: #a45b12;
+}
+
 .adm-attendance-status.status-absent {
   background: #fbebec;
   color: #b13d41;
@@ -2207,7 +2212,7 @@ button:disabled {
 
 .adm-attendance-counts {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 7px;
   padding: 0 13px;
 }
@@ -2239,6 +2244,10 @@ button:disabled {
 
 .adm-attendance-counts .status-absent strong {
   color: #b13d41;
+}
+
+.adm-attendance-counts .status-late strong {
+  color: #a45b12;
 }
 
 .adm-attendance-counts .status-medical strong {

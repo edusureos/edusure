@@ -22,6 +22,7 @@ import EmptyState from './EmptyState';
 import AttendancePage from './AttendancePage';
 import { fetchAttendance } from './attendance-api';
 import FeeSubmission from './FeeSubmission';
+import FacultyAttendancePage from './FacultyAttendancePage';
 
 const EMPTY = {
   performance: 'No analytics available yet. Data will appear here once activity is recorded.',
@@ -36,7 +37,7 @@ const EMPTY = {
   search: 'No records match your search.',
 };
 
-export default function PortalPage({ onLogout, userId, profile = {} }) {
+export default function PortalPage({ onLogout, userId, profile = {}, role, token }) {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [profileData, setProfileData] = useState(profile);
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
@@ -111,6 +112,7 @@ export default function PortalPage({ onLogout, userId, profile = {} }) {
   );
 
   const signedInLabel = profileData.username || userId?.trim() || 'Signed-in account';
+  const currentRole = profileData.role || role;
   const studentName = typeof profileData.studentName === 'string' && profileData.studentName.trim()
     ? profileData.studentName.trim()
     : 'Student';
@@ -227,7 +229,9 @@ export default function PortalPage({ onLogout, userId, profile = {} }) {
         </div>
       </header>
 
-      {activeSection === 'attendance' ? (
+      {activeSection === 'attendance' && currentRole === 'TEACHER' ? (
+        <FacultyAttendancePage token={token} onBack={() => setActiveSection('dashboard')} />
+      ) : activeSection === 'attendance' ? (
         <AttendancePage onBack={() => setActiveSection('dashboard')} />
       ) : activeSection === 'fee-submission' ? (
         <FeeSubmission

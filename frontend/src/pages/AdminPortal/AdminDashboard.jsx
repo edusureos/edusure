@@ -7,13 +7,9 @@ import {
   SlidersHorizontal, Upload, UserRound, UserRoundCheck, Users, X,
 } from 'lucide-react';
 import './admin.css';
-<<<<<<< Updated upstream
-import { adminEndpoints, adminRequest, downloadAdminExport, downloadBulkFile } from './adminApi';
-
-=======
 import { adminEndpoints, adminRequest, downloadAdminExport } from './adminApi';
 import FeeManagementPage from './FeeManagementPage';
->>>>>>> Stashed changes
+import AttendanceManagementPage from './AttendanceManagementPage';
 const emptyRecords = Object.freeze([]);
 
 const navigation = [
@@ -37,7 +33,7 @@ const pageCopy = {
   teachers: ['Faculty Directory', 'Review the teaching team connected to your school.'],
   classes: ['Classes & Sections', 'Review class and section totals from student records.'],
   timetable: ['Timetable', 'Class schedules will be available when timetable data is connected.'],
-  attendance: ['Daily Class Attendance', 'Mark attendance for a class and date.'],
+  attendance: ['Attendance Management', 'Manage class attendance and review reports.'],
   examinations: ['Examinations', 'Exam schedules will be available when examination data is connected.'],
   reports: ['Results & Reports', 'Academic results will be available when reporting data is connected.'],
   fees: ['Fee Management', 'Review and manage the fee information connected to your school.'],
@@ -425,11 +421,12 @@ function TeacherPage({ resource, query, onQuery, onAdd, onRetry, onRefresh, prev
 
 const attendanceStatuses = [
   { id: 'PRESENT', label: 'Present', color: 'present' },
+  { id: 'LATE', label: 'Late', color: 'late' },
   { id: 'ABSENT', label: 'Absent', color: 'absent' },
   { id: 'MEDICAL', label: 'Medical', color: 'medical' },
 ];
 
-function AdminAttendancePage({ token, stats, statsLoading, statsError, previewMode }) {
+export function AdminAttendancePage({ token, stats, statsLoading, statsError, previewMode, onBack }) {
   const [classGrade, setClassGrade] = useState('');
   const [section, setSection] = useState('all');
   const [date, setDate] = useState(() => {
@@ -447,7 +444,8 @@ function AdminAttendancePage({ token, stats, statsLoading, statsError, previewMo
     .filter((item) => item.class_grade === classGrade && item.section)
     .map((item) => item.section))];
   const markedCount = students.filter((student) => attendanceStatuses.some((status) => status.id === student.status)).length;
-  const presentCount = students.filter((student) => student.status === 'PRESENT').length;
+  const presentCount = students.filter((student) => student.status === 'PRESENT' || student.status === 'LATE').length;
+  const lateCount = students.filter((student) => student.status === 'LATE').length;
   const absentCount = students.filter((student) => student.status === 'ABSENT').length;
   const medicalCount = students.filter((student) => student.status === 'MEDICAL').length;
   const presentPercentage = students.length ? Math.round((presentCount / students.length) * 100) : 0;
@@ -471,10 +469,7 @@ function AdminAttendancePage({ token, stats, statsLoading, statsError, previewMo
       if (!Array.isArray(result?.students)) {
         throw new Error('The server returned an invalid attendance response.');
       }
-      setStudents(result.students.map((student) => ({
-        ...student,
-        status: student.status === 'LATE' ? 'PRESENT' : student.status,
-      })));
+      setStudents(result.students);
     } catch (requestError) {
       setStudents([]);
       setError(getErrorMessage(requestError));
@@ -516,6 +511,7 @@ function AdminAttendancePage({ token, stats, statsLoading, statsError, previewMo
 
   return (
     <>
+      {onBack && <button type="button" className="att-back-button" onClick={onBack}><ChevronLeft size={15} /> Back to portal</button>}
       <PageHeading title="Daily Class Attendance" description="Mark attendance for a class and date." />
       <section className="adm-card adm-attendance-controls" aria-label="Attendance filters">
         <label className="adm-attendance-field">
@@ -603,6 +599,7 @@ function AdminAttendancePage({ token, stats, statsLoading, statsError, previewMo
           </div>
           <div className="adm-attendance-counts">
             <div className="status-present"><span>Present</span><strong>{students.length ? presentCount : '—'}</strong></div>
+            <div className="status-late"><span>Late</span><strong>{students.length ? lateCount : '—'}</strong></div>
             <div className="status-absent"><span>Absent</span><strong>{students.length ? absentCount : '—'}</strong></div>
             <div className="status-medical"><span>Medical</span><strong>{students.length ? medicalCount : '—'}</strong></div>
           </div>
@@ -901,7 +898,14 @@ export default function AdminDashboard({ onLogout, previewMode = false }) {
           {active === 'teachers' && <TeacherPage resource={resources.teachers} query={query} onQuery={setQuery} onAdd={() => setDialog({ kind: 'teacher' })} onRetry={() => loadResource('teachers')} onRefresh={() => loadResource('teachers')} previewMode={previewMode} token={auth.token} />}
           {active === 'classes' && <ClassesPage stats={stats} statsLoading={statsLoading} statsError={statsError} onRetry={refreshDashboard} query={query} onQuery={setQuery} previewMode={previewMode} />}
           {active === 'notices' && <NoticesPage resource={resources.notices} query={query} onQuery={setQuery} onAdd={() => setDialog({ kind: 'notice' })} onRetry={() => loadResource('notices')} onRefresh={() => loadResource('notices')} previewMode={previewMode} />}
-          {active === 'attendance' && <AdminAttendancePage token={auth.token} stats={stats} statsLoading={statsLoading} statsError={statsError} previewMode={previewMode} />}
+          {active === 'attendance' && <AttendanceManagementPage
+            token={auth.token}
+            stats={stats}
+            statsLoading={statsLoading}
+            statsError={statsError}
+            previewMode={previewMode}
+            MarkAttendance={AdminAttendancePage}
+          />}
           {active === 'fees' && <FeeManagementPage token={auth.token} previewMode={previewMode} stats={stats} statsLoading={statsLoading} statsError={statsError} onRefreshStats={refreshDashboard} />}
           {['timetable', 'examinations', 'reports', 'calendar'].includes(active) && <NotConnectedPage active={active} />}
           {active === 'settings' && <SettingsPage profile={auth.profile} previewMode={previewMode} />}
