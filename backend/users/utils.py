@@ -1,6 +1,8 @@
 import datetime
 from django.db import transaction
 from django.contrib.auth import get_user_model
+import secrets
+
 
 ROLE_CODE_MAP = {
     'STUDENT': '0',
@@ -33,3 +35,26 @@ def generate_user_id(role: str, school_code: str = "101") -> str:
             new_serial = 1
 
         return f"{prefix}{new_serial:04d}"
+
+
+
+def generate_temp_password(length: int = 8) -> str:
+    """
+    Generates an unambiguous random strong password matching StrongPasswordValidator.
+    Excludes confusing characters (0, O, 1, l, I) for easy reading on class slips.
+    """
+    upper = "ABCDEFGHJKLMNPQRSTUVWXYZ"
+    lower = "abcdefghijkmnopqrstuvwxyz"
+    digits = "23456789"
+    special = "@$!%*?&#"
+
+    password_chars = [
+        secrets.choice(upper),
+        secrets.choice(lower),
+        secrets.choice(digits),
+        secrets.choice(special),
+    ]
+    all_chars = upper + lower + digits + special
+    password_chars += [secrets.choice(all_chars) for _ in range(length - 4)]
+    secrets.SystemRandom().shuffle(password_chars)
+    return "".join(password_chars)    

@@ -4,6 +4,10 @@ import urllib.parse
 import uuid
 from decimal import Decimal, ROUND_HALF_UP
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.permissions import AllowAny
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -848,6 +852,101 @@ class VerifyGatewayPaymentView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+@method_decorator(csrf_exempt, name="dispatch")
+class RazorpayWebhookView(APIView):
+    """
+    Server-to-server Razorpay Webhook listener (payment.captured / order.paid).
+    Handles cases where user closes browser before frontend verify API is called.
+    """
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    @transaction.atomic
+    def post(self, request):
+        webhook_secret = getattr(settings, "RAZORPAY_WEBHOOK_SECRET", "")
+        if not webhook_secret:
+            return Response(
+                {"detail": "Webhook secret not configured."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        received_signature = request.headers.get("X-Razorpay-Signature", "")
+        raw_body = request.body.decode("utf-8")
+
+        try:
+            import razorpay
+
+            client = razorpay.Client(
+                auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)
+            )
+            client.utility.verify_webhook_signature(
+                raw_body, received_signature, webhook_secret
+            )
+        except Exception:
+            return Response(
+                {"detail": "Invalid webhook signature."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        payload = request.data
+        event = payload.get("event")
+
+        if event in ("payment.captured", "order.paid"):
+            payment_entity = (
+                payload.get("payload", {})
+                .get("payment", {})
+                .get("entity", {})
+            )
+            order_id = payment_entity.get("order_id")
+            payment_id = payment_entity.get("id")
+
+            if not order_id:
+                return Response({"status": "ignored"}, status=status.HTTP_200_OK)
+
+            txn = (
+                PaymentTransaction.objects.select_for_update()
+                .select_related("invoice")
+                .filter(gateway_order_id=order_id)
+                .first()
+            )
+            if not txn:
+                return Response({"status": "order_not_found"}, status=status.HTTP_200_OK)
+
+            # Idempotency check: agar VerifyGatewayPaymentView pehle hi PAID kar chuka hai toh skip karein
+            if txn.status == PaymentTransaction.Status.SUCCESS:
+                return Response({"status": "already_processed"}, status=status.HTTP_200_OK)
+
+            txn.gateway_payment_id = payment_id or txn.gateway_payment_id
+            txn.status = PaymentTransaction.Status.SUCCESS
+            txn.paid_at = timezone.now()
+            txn.remarks = "Verified via Razorpay Webhook"
+            txn.assign_receipt_number()
+            txn.save()
+
+            invoice = txn.invoice
+            invoice.amount_paid = invoice.amount_paid + txn.amount
+            _recalculate_invoice_status(invoice)
+
+        elif event == "payment.failed":
+            payment_entity = (
+                payload.get("payload", {})
+                .get("payment", {})
+                .get("entity", {})
+            )
+            order_id = payment_entity.get("order_id")
+            if order_id:
+                txn = (
+                    PaymentTransaction.objects.select_for_update()
+                    .filter(gateway_order_id=order_id)
+                    .first()
+                )
+                if txn and txn.status == PaymentTransaction.Status.INITIATED:
+                    txn.status = PaymentTransaction.Status.FAILED
+                    txn.remarks = payment_entity.get("error_description", "Payment failed at gateway")
+                    txn.save(update_fields=["status", "remarks"])
+
+        return Response({"status": "ok"}, status=status.HTTP_200_OK)
 
 
 class FeeReceiptPDFView(APIView):

@@ -2,27 +2,32 @@
 Django settings for edusure project.
 """
 
-from pathlib import Path
+from datetime import timedelta
+import json
 import os
+from pathlib import Path
+from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
 
 # -----------------------------------------------------------------------------
 # Security & Environment Settings
 # -----------------------------------------------------------------------------
-# In production, define these in your .env file or environment variables
 SECRET_KEY = os.environ.get(
-    'DJANGO_SECRET_KEY', 
+    'DJANGO_SECRET_KEY',
     'django-insecure-^^o#17-z0)1q_9hl3)$k&@am%a$9c_xq1=%i392es3quidc*b^'
 )
 
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('true', '1', 't')
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
+ALLOWED_HOSTS = [
+    h.strip() for h in os.environ.get('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',') if h.strip()
+]
 
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # -----------------------------------------------------------------------------
 # Application Definition
@@ -34,25 +39,24 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
+
     # 3rd Party
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'drf_spectacular',
-    'rest_framework_simplejwt.token_blacklist', 
 
-    # Local Apps
     # Local Apps
     'users.apps.UsersConfig',
     'academics',
     'finance',
     'payments',
-
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -81,11 +85,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'edusure.wsgi.application'
 
-
 # -----------------------------------------------------------------------------
-# Database Setup (SQLite for Local Dev / PostgreSQL ready for Production)
+# Database Setup (SQLite Local Dev / PostgreSQL Production via DATABASE_URL)
 # -----------------------------------------------------------------------------
-# Reads DATABASE_URL if set (PostgreSQL), otherwise defaults to SQLite
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
@@ -105,59 +107,54 @@ else:
         }
     }
 
-
 # -----------------------------------------------------------------------------
 # Password Validation
 # -----------------------------------------------------------------------------
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
-    {
-        'NAME': 'users.validators.StrongPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+    {'NAME': 'users.validators.StrongPasswordValidator'},
 ]
-
 
 # -----------------------------------------------------------------------------
 # Internationalization
 # -----------------------------------------------------------------------------
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'Asia/Kolkata'  # Updated to IST timezone for accurate attendance & logging
+TIME_ZONE = 'Asia/Kolkata'
 USE_I18N = True
 USE_TZ = True
-
 
 # -----------------------------------------------------------------------------
 # Static & Media Files
 # -----------------------------------------------------------------------------
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-
 # -----------------------------------------------------------------------------
 # Custom App Settings
 # -----------------------------------------------------------------------------
-
-# 1. Custom User Model
 AUTH_USER_MODEL = 'users.User'
 
-# 2. CORS Policy
-CORS_ALLOW_ALL_ORIGINS = True  # Production mein specific origins list set karenge
+# CORS & CSRF (Set CORS_ALLOWED_ORIGINS in production to your Vercel URL)
+_cors_origins = os.environ.get('CORS_ALLOWED_ORIGINS', '')
+if _cors_origins:
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_origins.split(',') if o.strip()]
+else:
+    CORS_ALLOW_ALL_ORIGINS = DEBUG
 
-# 3. Django REST Framework & JWT Configuration
+CSRF_TRUSTED_ORIGINS = [
+    o.strip()
+    for o in os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173').split(',')
+    if o.strip()
+]
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -165,39 +162,34 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
-# 4. Swagger UI Settings
-SPECTACULAR_SETTINGS = {
-    'TITLE': 'Edusure API',
-    'DESCRIPTION': 'Enterprise API documentation for Edusure School ERP',
-    'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False,
-}
-
-# 5. Firebase Admin SDK Initialization
-FIREBASE_CRED_PATH = BASE_DIR / 'firebase-adminsdk.json'
-
-if FIREBASE_CRED_PATH.exists() and not firebase_admin._apps:
-    cred = credentials.Certificate(str(FIREBASE_CRED_PATH))
-    firebase_admin.initialize_app(cred)
-
-# 6. Optional Payment Gateway (falls back to Mock Mode if empty)
-RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID', '')
-RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET', '')
-
-
-from datetime import timedelta
-
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=2),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'PLA',
+    'TITLE': 'EduSure ERP API',
+    'DESCRIPTION': 'Enterprise API documentation for EduSure School ERP',
     'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
     'SWAGGER_UI_SETTINGS': {
         'persistAuthorization': True,
     },
 }
 
+# Firebase Admin SDK (Supports env JSON string in Production OR local file in Dev)
+FIREBASE_CRED_JSON = os.environ.get('FIREBASE_CREDENTIALS_JSON', '')
+FIREBASE_CRED_PATH = BASE_DIR / 'firebase-adminsdk.json'
 
+if not firebase_admin._apps:
+    if FIREBASE_CRED_JSON:
+        cred = credentials.Certificate(json.loads(FIREBASE_CRED_JSON))
+        firebase_admin.initialize_app(cred)
+    elif FIREBASE_CRED_PATH.exists():
+        cred = credentials.Certificate(str(FIREBASE_CRED_PATH))
+        firebase_admin.initialize_app(cred)
+
+# Razorpay Live / Test Credentials
+RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID', '')
+RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET', '')
+RAZORPAY_WEBHOOK_SECRET = os.environ.get('RAZORPAY_WEBHOOK_SECRET', '')

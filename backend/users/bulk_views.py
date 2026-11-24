@@ -11,6 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .serializers import generate_temp_password
 from .models import StudentProfile
 from .permissions import IsSchoolAdmin
 from .signals import pause_excel_sync
@@ -65,6 +66,7 @@ class BulkStudentEnrollmentView(APIView):
                     "detail": {"type": "string"},
                     "saved_file": {"type": "string"},
                     "total_processed": {"type": "integer"},
+                    "credentials": {"type": "array"},
                 },
             }
         },
@@ -111,6 +113,7 @@ class BulkStudentEnrollmentView(APIView):
         year_suffix = datetime.datetime.now().strftime("%y")
         prefix = f"{school_code}{ROLE_CODE_MAP['STUDENT']}{year_suffix}"
         processed_count = 0
+        created_credentials = []
 
         with pause_excel_sync():
             for sheet_name, df in sheets_dict.items():
@@ -170,8 +173,19 @@ class BulkStudentEnrollmentView(APIView):
                     )
 
                     if created:
-                        user.set_password("Student@12345")
+                        temp_password = generate_temp_password()
+                        user.set_password(temp_password)
                         user.save()
+                        created_credentials.append(
+                            {
+                                "user_id": generated_id,
+                                "name": f"{first_name} {last_name}".strip(),
+                                "class_grade": class_grade,
+                                "section": section,
+                                "roll_number": int(generated_id[-4:]) if generated_id[-4:].isdigit() else None,
+                                "temporary_password": temp_password,
+                            }
+                        )
 
                     StudentProfile.objects.update_or_create(
                         user=user,
@@ -194,6 +208,7 @@ class BulkStudentEnrollmentView(APIView):
                 "detail": f"Successfully processed {processed_count} students from '{safe_filename}'.",
                 "saved_file": saved_path,
                 "total_processed": processed_count,
+                "credentials": created_credentials,
             },
             status=status.HTTP_201_CREATED,
         )

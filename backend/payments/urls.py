@@ -17,6 +17,7 @@ from .views import (
     StudentMyFeesView,
     SubmitUPIUTRView,
     VerifyGatewayPaymentView,
+    RazorpayWebhookView,
 )
 
 urlpatterns = [
@@ -40,6 +41,8 @@ urlpatterns = [
     path("upi/submit-utr/", SubmitUPIUTRView.as_view(), name="upi-submit-utr"),
     path("gateway/create-order/", CreateGatewayOrderView.as_view(), name="gateway-create-order"),
     path("gateway/verify/", VerifyGatewayPaymentView.as_view(), name="gateway-verify"),
+    path("gateway/create-order/", CreateGatewayOrderView.as_view(), name="gateway-create-order"),
+    path("gateway/webhook/", RazorpayWebhookView.as_view(), name="gateway-webhook"),
 
     # Shared Official PDF Receipt
     path("receipt/<str:receipt_number>/pdf/", FeeReceiptPDFView.as_view(), name="fee-receipt-pdf"),

@@ -116,9 +116,20 @@ def generate_next_erp_id(school_id: int, role_digit: str) -> str:
 
 
 def generate_temp_password(length=8) -> str:
-    chars = string.ascii_letters + string.digits
-    return ''.join(secrets.choice(chars) for _ in range(length))
-
+    upper = "ABCDEFGHJKLMNPQRSTUVWXYZ"
+    lower = "abcdefghijkmnopqrstuvwxyz"
+    digits = "23456789"
+    special = "@$!%*?&#"
+    chars = [
+        secrets.choice(upper),
+        secrets.choice(lower),
+        secrets.choice(digits),
+        secrets.choice(special),
+    ]
+    pool = upper + lower + digits + special
+    chars += [secrets.choice(pool) for _ in range(length - 4)]
+    secrets.SystemRandom().shuffle(chars)
+    return ''.join(chars)
 
 def get_unique_user_phone(phone: str):
     """Returns phone if not already taken on User model, else None (prevents sibling crash)."""
