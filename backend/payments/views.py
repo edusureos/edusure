@@ -679,6 +679,19 @@ class SubmitUPIUTRView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        if PaymentTransaction.objects.filter(
+            school_id=invoice.school_id,
+            utr_number=data["utr_number"],
+            status__in=[
+                PaymentTransaction.Status.PENDING_VERIFICATION,
+                PaymentTransaction.Status.SUCCESS,
+            ],
+        ).exists():
+            return Response(
+                {"detail": "This UTR number has already been submitted for verification."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         txn = PaymentTransaction.objects.create(
             school_id=invoice.school_id,
             invoice=invoice,
@@ -817,6 +830,17 @@ class VerifyGatewayPaymentView(APIView):
 
         key_id = getattr(settings, "RAZORPAY_KEY_ID", "")
         key_secret = getattr(settings, "RAZORPAY_KEY_SECRET", "")
+
+        # Production (DEBUG=False) mein mock ya bina keys wale payment block karein
+        if not settings.DEBUG and (
+            not key_id or not key_secret or txn.gateway_order_id.startswith("order_mock_")
+        ):
+            return Response(
+                {"detail": "Live payment gateway is not configured."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        
         if key_id and key_secret and not txn.gateway_order_id.startswith("order_mock_"):
             try:
                 import razorpay
@@ -841,7 +865,7 @@ class VerifyGatewayPaymentView(APIView):
         txn.assign_receipt_number()
         txn.save()
 
-        invoice = txn.invoice
+        invoice = StudentFeeInvoice.objects.select_for_update().get(id=txn.invoice_id)
         invoice.amount_paid = invoice.amount_paid + txn.amount
         _recalculate_invoice_status(invoice)
 
