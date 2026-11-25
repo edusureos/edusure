@@ -85,28 +85,6 @@ function getCounts(records) {
   );
 }
 
-function getStreaks(records, today) {
-  const chronological = [...records]
-    .sort((a, b) => a.parsedDate - b.parsedDate)
-    .filter((record) => record.parsedDate <= today);
-  let current = 0;
-  let longest = 0;
-  let run = 0;
-
-  chronological.forEach((record) => {
-    const attended = ['PRESENT', 'LATE'].includes(record.status.toUpperCase());
-    run = attended ? run + 1 : 0;
-    longest = Math.max(longest, run);
-  });
-
-  for (let index = chronological.length - 1; index >= 0; index -= 1) {
-    if (!['PRESENT', 'LATE'].includes(chronological[index].status.toUpperCase())) break;
-    current += 1;
-  }
-
-  return { current, longest };
-}
-
 function StatusSummaryCard({ option, count, percentage, isTracked, isSelected, onClick }) {
   const Icon = option.icon;
   return (
@@ -173,11 +151,8 @@ export default function AttendancePage({ onBack }) {
     return localDate(today.getFullYear(), today.getMonth(), 1);
   });
   const [monthData, setMonthData] = useState(null);
-  const [allTimeData, setAllTimeData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isStreakLoading, setIsStreakLoading] = useState(true);
   const [error, setError] = useState('');
-  const [streakError, setStreakError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
   const [activeFilter, setActiveFilter] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
@@ -197,23 +172,7 @@ export default function AttendancePage({ onBack }) {
     return () => controller.abort();
   }, [monthDate, reloadKey]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    fetchAttendance(null, controller.signal)
-      .then(setAllTimeData)
-      .catch((requestError) => {
-        if (requestError.name !== 'AbortError') setStreakError(requestError.message);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setIsStreakLoading(false);
-      });
-
-    return () => controller.abort();
-  }, [reloadKey]);
-
   const records = monthData?.records || NO_RECORDS;
-  const allTimeRecords = allTimeData?.records || NO_RECORDS;
   const counts = useMemo(() => getCounts(records), [records]);
   const totalDays = monthData?.totalDays ?? records.length;
   const knownRecordDays = records.length;
@@ -223,8 +182,6 @@ export default function AttendancePage({ onBack }) {
     : 0;
   const isDataAvailable = !isLoading && !error;
   const { days, weeks } = useMemo(() => makeCalendarDays(monthDate, records), [monthDate, records]);
-  const streaks = useMemo(() => getStreaks(allTimeRecords, today), [allTimeRecords, today]);
-  const streakIsPartial = Boolean(allTimeData && allTimeData.totalDays > allTimeRecords.length);
   const selectedRecord = selectedDate
     ? records.find((record) => record.date === dateKey(selectedDate)) || null
     : null;
@@ -294,8 +251,6 @@ export default function AttendancePage({ onBack }) {
     setMonthData(null);
     setIsLoading(true);
     setError('');
-    setIsStreakLoading(true);
-    setStreakError('');
     setSelectedDate(null);
     setReloadKey((key) => key + 1);
   }
@@ -520,39 +475,6 @@ export default function AttendancePage({ onBack }) {
         </section>
       </div>
 
-      <section className="attendance-panel attendance-insights-panel">
-        <div className="attendance-panel-heading">
-          <div>
-            <h2>Attendance insights</h2>
-            <p>Progress from actual attendance records for {monthName}</p>
-          </div>
-          <span className={`attendance-record-status${knownRecordDays ? ' has-records' : ''}`}>
-            <span />{isLoading ? 'Loading' : error ? 'Unavailable' : knownRecordDays ? 'Records available' : 'No records'}
-          </span>
-        </div>
-        <div className="attendance-insight-grid">
-          <Insight label="Recorded working days" value={isLoading || error ? '—' : totalDays} />
-          <Insight label="Days attended" value={isLoading || error ? '—' : attendanceUnits} />
-          <Insight label="Days absent" value={isLoading || error ? '—' : counts.absent} />
-          <Insight label="Attendance rate" value={isLoading || error ? '—' : `${attendancePercentage}%`} />
-          <Insight label="Current streak" value={isStreakLoading || streakError ? '—' : `${streakIsPartial ? '≥ ' : ''}${streaks.current} ${streaks.current === 1 ? 'day' : 'days'}`} />
-          <Insight label="Longest streak" value={isStreakLoading || streakError ? '—' : `${streakIsPartial ? '≥ ' : ''}${streaks.longest} ${streaks.longest === 1 ? 'day' : 'days'}`} />
-        </div>
-        <p className="attendance-insights-note">
-          {streakError
-            ? `Streak information is unavailable: ${streakError}`
-            : `${streakIsPartial ? 'Streaks are lower bounds because the API only returns the latest 60 attendance entries. ' : ''}Streaks count consecutive recorded attendance entries; EduSure does not currently provide a school-day calendar or minimum attendance threshold.`}
-        </p>
-      </section>
     </main>
-  );
-}
-
-function Insight({ label, value }) {
-  return (
-    <div className="attendance-insight">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
   );
 }

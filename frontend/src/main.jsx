@@ -11,10 +11,13 @@ if (API_ORIGIN) {
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+import ChristmasAtmosphere from './Edusure/ChristmasAtmosphere.jsx'
 import App from './App.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <ChristmasAtmosphere>
+      <App />
+    </ChristmasAtmosphere>
   </StrictMode>,
 )

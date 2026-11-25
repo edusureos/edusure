@@ -1,5 +1,12 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+from pathlib import Path
+from uuid import uuid4
+
+
+def notice_attachment_path(instance, filename):
+    extension = Path(filename).suffix.lower()
+    return f'notices/school_{instance.school_id}/{uuid4().hex}{extension}'
 
 
 class CustomUserManager(BaseUserManager):
@@ -106,6 +113,7 @@ class Notice(models.Model):
     content = models.TextField()
     target_roles = models.JSONField(default=list)
     target_classes = models.JSONField(default=list, blank=True)
+    attachment = models.FileField(upload_to=notice_attachment_path, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_notices')
     created_at = models.DateTimeField(auto_now_add=True)
 

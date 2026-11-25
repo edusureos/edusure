@@ -113,7 +113,7 @@ export default function App() {
   }
 
   return (
-    <main className="min-h-screen w-full bg-[var(--clay-canvas)] flex items-stretch">
+    <main className="christmas-login-scene min-h-screen w-full bg-[var(--clay-canvas)] flex items-stretch">
       <div className="w-full flex flex-col lg:flex-row min-h-screen bg-[var(--clay-canvas)]">
         <IllustrationSide className="w-full lg:w-1/2" />
         <section

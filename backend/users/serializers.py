@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.password_validation import validate_password
@@ -241,7 +244,16 @@ class AdminTeacherSerializer(serializers.ModelSerializer):
 
 
 class NoticeSerializer(serializers.ModelSerializer):
+    MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024
+    ATTACHMENT_SIGNATURES = {
+        '.pdf': (b'%PDF-',),
+        '.jpg': (b'\xff\xd8\xff',),
+        '.jpeg': (b'\xff\xd8\xff',),
+        '.png': (b'\x89PNG\r\n\x1a\n',),
+    }
+
     created_by = serializers.CharField(source='created_by.username', read_only=True)
+    attachment = serializers.FileField(required=False)
     target_roles = serializers.ListField(
         child=serializers.ChoiceField(choices=Notice.TargetRole.choices),
         allow_empty=False,
@@ -256,10 +268,54 @@ class NoticeSerializer(serializers.ModelSerializer):
         model = Notice
         fields = [
             'id', 'title', 'content',
-            'target_roles', 'target_classes',
+            'target_roles', 'target_classes', 'attachment',
             'created_by', 'created_at',
         ]
         read_only_fields = ['id', 'created_by', 'created_at']
+
+    def to_internal_value(self, data):
+        if hasattr(data, 'getlist'):
+            normalized_data = {}
+            for field_name in data.keys():
+                values = data.getlist(field_name)
+                if field_name in ('target_roles', 'target_classes'):
+                    if len(values) == 1 and isinstance(values[0], str) and values[0].startswith('['):
+                        try:
+                            values = json.loads(values[0])
+                        except json.JSONDecodeError as error:
+                            raise serializers.ValidationError({
+                                field_name: 'Provide a valid JSON array.',
+                            }) from error
+                        if not isinstance(values, list):
+                            raise serializers.ValidationError({
+                                field_name: 'Provide a JSON array.',
+                            })
+                    normalized_data[field_name] = values
+                else:
+                    normalized_data[field_name] = data.get(field_name)
+            data = normalized_data
+        return super().to_internal_value(data)
+
+    def validate_attachment(self, value):
+        extension = Path(value.name).suffix.lower()
+        signatures = self.ATTACHMENT_SIGNATURES.get(extension)
+        if not signatures:
+            raise serializers.ValidationError('Only PDF, JPG, and PNG attachments are allowed.')
+        if value.size > self.MAX_ATTACHMENT_SIZE:
+            raise serializers.ValidationError('Attachments must be 10 MB or smaller.')
+
+        header = value.read(8)
+        value.seek(0)
+        if not any(header.startswith(signature) for signature in signatures):
+            raise serializers.ValidationError('The attachment content does not match its file type.')
+        return value
+
+    def update(self, instance, validated_data):
+        previous_attachment_name = instance.attachment.name if instance.attachment else ''
+        updated = super().update(instance, validated_data)
+        if previous_attachment_name and previous_attachment_name != updated.attachment.name:
+            instance.attachment.storage.delete(previous_attachment_name)
+        return updated
 
     def validate_target_roles(self, value):
         unique_roles = list(dict.fromkeys(value))

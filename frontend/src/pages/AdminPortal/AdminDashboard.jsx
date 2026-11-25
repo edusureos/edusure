@@ -4,13 +4,14 @@ import {
   ChevronDown, ChevronLeft, ChevronRight, CircleAlert, ClipboardCheck,
   CreditCard, FileBarChart, FileText, GraduationCap, LayoutDashboard,
   LockKeyhole, LogOut, Menu, Megaphone, Pencil, Plus, Search, Settings, ShieldCheck,
-  SlidersHorizontal, Upload, UserRound, UserRoundCheck, Users, X,
+  SlidersHorizontal, Trash2, Upload, UserRound, UserRoundCheck, Users, X,
 } from 'lucide-react';
 import './admin.css';
 import { adminEndpoints, adminRequest } from './adminApi';
 import ExportMenu from './ExportMenu';
 import FeeManagementPage from './FeeManagementPage';
 import AttendanceManagementPage from './AttendanceManagementPage';
+import ContactUs from '../../Edusure/ContactUs';
 const emptyRecords = Object.freeze([]);
 
 const navigation = [
@@ -23,7 +24,7 @@ const navigation = [
   { id: 'examinations', label: 'Examinations', icon: GraduationCap, group: 'Academics' },
   { id: 'reports', label: 'Results & Reports', icon: FileBarChart, group: 'Academics' },
   { id: 'fees', label: 'Fee Management', icon: CreditCard, group: 'Operations' },
-  { id: 'notices', label: 'Notices & Announcements', icon: Megaphone, group: 'Operations' },
+  { id: 'notices', label: 'Notice & Announcement', icon: Megaphone, group: 'Operations' },
   { id: 'calendar', label: 'Calendar', icon: CalendarDays, group: 'Operations' },
   { id: 'settings', label: 'Settings', icon: Settings, group: 'Administration' },
 ];
@@ -34,21 +35,21 @@ const schoolBranding = {
 };
 
 const pageCopy = {
-  dashboard: ['School overview', 'A clear view of your school workspace and connected records.'],
-  students: ['Students', ''],
-  teachers: ['Faculty Directory', 'Review the teaching team connected to your school.'],
-  classes: ['Classes & Sections', 'Review class and section totals from student records.'],
-  timetable: ['Timetable', 'Class schedules will be available when timetable data is connected.'],
-  attendance: ['Attendance Management', 'Manage class attendance and review reports.'],
-  examinations: ['Examinations', 'Exam schedules will be available when examination data is connected.'],
-  reports: ['Results & Reports', 'Academic results will be available when reporting data is connected.'],
-  fees: ['Fee Management', 'Review and manage the fee information connected to your school.'],
-  notices: ['Notices & Announcements', 'Publish and review school announcements.'],
-  calendar: ['Calendar', 'School events will be available when calendar data is connected.'],
-  settings: ['Settings', 'Review your authenticated administrator account.'],
+  dashboard: ['', 'A clear view of your school workspace and connected records.'],
+  students: ['', ''],
+  teachers: ['', 'Review the teaching team connected to your school.'],
+  classes: ['', 'Review class and section totals from student records.'],
+  timetable: ['', 'Class schedules will be available when timetable data is connected.'],
+  attendance: [' ', 'Manage class attendance and review reports.'],
+  examinations: ['', 'Exam schedules will be available when examination data is connected.'],
+  reports: [' ', 'Academic results will be available when reporting data is connected.'],
+  fees: ['', 'Review and manage the fee information connected to your school.'],
+  notices: ['', 'Publish and review school announcements.'],
+  calendar: ['', 'School events will be available when calendar data is connected.'],
+  settings: ['', 'Review your authenticated administrator account.'],
 };
 
-const searchSections = new Set(['students', 'teachers', 'classes', 'notices']);
+const searchSections = new Set(['students', 'teachers', 'classes']);
 const pageSize = 8;
 const adminRoles = new Set(['SCHOOL_ADMIN', 'SUPER_ADMIN']);
 const todayLabel = new Intl.DateTimeFormat('en-IN', {
@@ -152,8 +153,42 @@ function TableCard({ title, count, description, controls, children, footer }) {
   );
 }
 
+function noticeTargetRoles(notice) {
+  const roles = Array.isArray(notice?.target_roles)
+    ? notice.target_roles
+    : [notice?.target_role || 'ALL'];
+  return roles.length ? roles : ['ALL'];
+}
+
+function noticeTargetClasses(notice) {
+  if (Array.isArray(notice?.target_classes)) return notice.target_classes;
+  return notice?.target_class ? [notice.target_class] : [];
+}
+
+function noticeAudienceLabel(notice) {
+  const roles = noticeTargetRoles(notice);
+  if (roles.includes('ALL')) return 'Everyone';
+  return roles.map((role) => role === 'STUDENT' ? 'Students' : 'Teachers').join(', ');
+}
+
 function NoticeRows({ notices }) {
-  return <div className="adm-notice-rows">{notices.map((notice) => <article className="adm-notice-row" key={notice.id}><span><Megaphone size={15} /></span><div><strong>{notice.title}</strong><small>{notice.target_role === 'ALL' ? 'Everyone' : notice.target_role === 'STUDENT' ? 'Students' : 'Teachers'}{notice.target_class ? ` · Class ${notice.target_class}` : ''}</small></div><time>{displayDate(notice.created_at)}</time></article>)}</div>;
+  return (
+    <div className="adm-notice-rows">
+      {notices.map((notice) => {
+        const classes = noticeTargetClasses(notice);
+        return (
+          <article className="adm-notice-row" key={notice.id}>
+            <span><Megaphone size={15} /></span>
+            <div>
+              <strong>{notice.title}</strong>
+              <small>{noticeAudienceLabel(notice)}{classes.length ? ` · Class ${classes.join(', ')}` : ''}</small>
+            </div>
+            <time>{displayDate(notice.created_at)}</time>
+          </article>
+        );
+      })}
+    </div>
+  );
 }
 
 function Avatar({ name }) {
@@ -174,7 +209,7 @@ function StudentForm({ record, busy, onClose, onSubmit }) {
     ['registered_phone', 'Contact number', 'tel', false],
     ['address', 'Address', 'textarea', false],
   ];
-  return <RecordForm title={record ? 'Edit student details' : 'Add student'} description="Changes are submitted to your school’s student service." fields={fields} initial={record} busy={busy} onClose={onClose} onSubmit={onSubmit} />;
+  return <RecordForm title={record ? 'Edit student details' : 'Add student'} description="Changes are submitted to your school’s student service." fields={fields} initial={record || {}} busy={busy} onClose={onClose} onSubmit={onSubmit} />;
 }
 
 function TeacherForm({ busy, onClose, onSubmit }) {
@@ -191,14 +226,129 @@ function TeacherForm({ busy, onClose, onSubmit }) {
   return <RecordForm title="Add teacher" description="The teacher record will be sent to your school’s teacher service." fields={fields} initial={{}} busy={busy} onClose={onClose} onSubmit={onSubmit} />;
 }
 
-function NoticeForm({ busy, onClose, onSubmit }) {
-  const fields = [
-    ['title', 'Announcement title', 'text', true],
-    ['target_role', 'Audience', 'select', true, [['ALL', 'Everyone'], ['STUDENT', 'Students'], ['TEACHER', 'Teachers']]],
-    ['target_class', 'Class (optional)', 'text', false],
-    ['content', 'Announcement', 'textarea', true],
-  ];
-  return <RecordForm title="Publish an announcement" description="This announcement will be submitted to the school notice service." fields={fields} initial={{ target_role: 'ALL' }} busy={busy} onClose={onClose} onSubmit={onSubmit} />;
+function NoticeForm({ record, busy, onClose, onSubmit }) {
+  const [targetRoles, setTargetRoles] = useState(() => noticeTargetRoles(record));
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  function toggleTargetRole(role) {
+    setTargetRoles((current) => {
+      if (role === 'ALL') return ['ALL'];
+      const selected = current.filter((value) => value !== 'ALL');
+      return selected.includes(role)
+        ? selected.filter((value) => value !== role)
+        : [...selected, role];
+    });
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const attachmentValue = formData.get('attachment');
+    const attachment = attachmentValue instanceof File && attachmentValue.size > 0
+      ? attachmentValue
+      : null;
+    const title = String(formData.get('title') || '').trim();
+    const content = String(formData.get('content') || '').trim();
+    const targetClasses = String(formData.get('target_classes') || '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    if (!targetRoles.length) {
+      setError('Select at least one audience.');
+      return;
+    }
+    if (attachment && !/\.(pdf|jpe?g|png)$/i.test(attachment.name)) {
+      setError('Choose a PDF, JPG, or PNG attachment.');
+      return;
+    }
+    if (attachment && attachment.size > 10 * 1024 * 1024) {
+      setError('Attachments must be 10 MB or smaller.');
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+    try {
+      await onSubmit({
+        title,
+        content,
+        target_roles: targetRoles,
+        target_classes: targetClasses,
+        attachment,
+      });
+    } catch (submitError) {
+      setError(getErrorMessage(submitError));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal
+      title={record ? 'Edit announcement' : 'Publish an announcement'}
+      description="Publish a notice for the selected school audience."
+      onClose={onClose}
+    >
+      <form className="adm-form" onSubmit={handleSubmit}>
+        <div className="adm-form-grid">
+          <label className="adm-field adm-field-full">
+            <span>Announcement title<i> *</i></span>
+            <input name="title" defaultValue={record?.title || ''} maxLength={200} required />
+          </label>
+          <fieldset className="adm-field adm-field-full adm-notice-audience">
+            <legend>Audience<i> *</i></legend>
+            {[
+              ['ALL', 'Everyone'],
+              ['STUDENT', 'Students'],
+              ['TEACHER', 'Teachers'],
+            ].map(([role, label]) => (
+              <label className="adm-notice-audience-option" key={role}>
+                <input
+                  type="checkbox"
+                  checked={targetRoles.includes(role)}
+                  onChange={() => toggleTargetRole(role)}
+                />
+                <span>{label}</span>
+              </label>
+            ))}
+          </fieldset>
+          <label className="adm-field adm-field-full">
+            <span>Student classes (optional, comma separated)</span>
+            <input
+              name="target_classes"
+              defaultValue={noticeTargetClasses(record).join(', ')}
+              placeholder="e.g. 6A, 7B"
+              disabled={targetRoles.includes('ALL') || !targetRoles.includes('STUDENT')}
+            />
+          </label>
+          <label className="adm-field adm-field-full">
+            <span>Announcement<i> *</i></span>
+            <textarea name="content" rows="5" defaultValue={record?.content || ''} required />
+          </label>
+          <label className="adm-field adm-field-full">
+            <span>Attachment (optional)</span>
+            <input name="attachment" type="file" accept=".pdf,.jpg,.jpeg,.png" />
+            <small>PDF, JPG, or PNG, up to 10 MB.</small>
+            {record?.attachment && (
+              <a href={record.attachment} target="_blank" rel="noreferrer">
+                View current attachment
+              </a>
+            )}
+          </label>
+        </div>
+        {error && <div className="adm-form-error" role="alert"><CircleAlert size={15} />{error}</div>}
+        <div className="adm-form-note"><LockKeyhole size={14} /> Data is sent only after you submit this form.</div>
+        <div className="adm-form-actions">
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="submit" disabled={saving || busy}>
+            {saving || busy ? 'Saving…' : record ? 'Save changes' : 'Publish notice'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
 }
 
 function RecordForm({ title, description, fields, initial, busy, onClose, onSubmit }) {
@@ -293,8 +443,9 @@ function DashboardPage({ stats, statsLoading, statsError, notices, noticesLoadin
   ));
   return (
     <>
-      <PageHeading title={`Welcome ${profile.username ? `, ${profile.username}` : ''}`} description={previewMode ? 'Explore the Admin Portal layout in this frontend-only preview.' : 'Here’s an overview of the records connected to your school.'} action={!previewMode && <Button variant="outline" onClick={onRefresh}><ArrowDownToLine size={15} /> Refresh data</Button>} />
-      {!previewMode && <div className="adm-connection-note"><span className="adm-connection-dot" />Connected to EduSure school services <span className="adm-note-separator" />All figures below are returned by your authenticated account.</div>}
+      <p className="christmas-greeting">Season&apos;s Greetings</p>
+      <PageHeading title={`Welcome ${profile.username ? `, ${profile.username}` : ''}`} description={previewMode ? 'Explore the Admin Portal layout in this frontend-only preview.' : ''} action={!previewMode && <Button variant="outline" onClick={onRefresh}><ArrowDownToLine size={15} /> Refresh data</Button>} />
+
       <section className="adm-overview-section">
         <div className="adm-section-heading"><div><span className="adm-section-kicker">OVERVIEW</span><h2>School at a glance</h2></div><span className="adm-date-label"><CalendarDays size={15} />{todayLabel}</span></div>
         <div className="adm-metric-grid">
@@ -617,18 +768,24 @@ function ClassesPage({ stats, statsLoading, statsError, onRetry, query, onQuery,
   );
 }
 
-function NoticesPage({ resource, query, onQuery, onAdd, onRetry, onRefresh, previewMode }) {
+function NoticesPage({ resource, onAdd, onEdit, onDelete, onRetry, onRefresh, previewMode }) {
   const [audience, setAudience] = useState('all');
   const [page, setPage] = useState(1);
-  const rows = resource.data.filter((notice) => `${notice.title || ''} ${notice.content || ''}`.toLowerCase().includes(query.toLowerCase()) && (audience === 'all' || notice.target_role === audience));
+  const rows = resource.data.filter((notice) => {
+    const roles = noticeTargetRoles(notice);
+    const matchesAudience = audience === 'all' || roles.includes('ALL') || roles.includes(audience);
+    return matchesAudience;
+  });
   const visible = rows.slice((page - 1) * pageSize, page * pageSize);
   return (
     <>
       <PageHeading title="Notices & Announcements" description={previewMode ? 'Announcements are not connected in this frontend-only preview.' : 'Publish a school announcement through the existing notice service.'} action={!previewMode && <Button onClick={onAdd}><Plus size={16} /> Publish notice</Button>} />
-      <TableCard title="School announcements" count={resource.loading ? '…' : resource.data.length} description="Published notices returned by the school service" controls={<><SearchBox value={query} onChange={(value) => { onQuery(value); setPage(1); }} placeholder="Search notices" /><FilterSelect label="Filter notices by audience" value={audience} onChange={(value) => { setAudience(value); setPage(1); }} options={[{ value: 'all', label: 'All audiences' }, { value: 'ALL', label: 'Everyone' }, { value: 'STUDENT', label: 'Students' }, { value: 'TEACHER', label: 'Teachers' }]} />{!previewMode && <IconButton label="Refresh notices" onClick={onRefresh}><ArrowDownToLine size={16} /></IconButton>}</>}>
-        {resource.loading ? <LoadingPanel label="Loading announcements…" /> : resource.error ? <ErrorPanel error={resource.error} onRetry={onRetry} /> : rows.length ? <><div className="adm-table-scroll"><table><thead><tr><th>Announcement</th><th>Audience</th><th>Class</th><th>Posted by</th><th>Published</th></tr></thead><tbody>{visible.map((notice) => <tr key={notice.id}><td><div className="adm-notice-title"><strong>{notice.title}</strong><small>{notice.content}</small></div></td><td>{notice.target_role === 'ALL' ? 'Everyone' : notice.target_role === 'STUDENT' ? 'Students' : 'Teachers'}</td><td>{notice.target_class || 'All classes'}</td><td>{notice.posted_by || '—'}</td><td>{displayDate(notice.created_at)}</td></tr>)}</tbody></table></div><Pagination count={rows.length} page={page} onChange={setPage} /></> : <EmptyState icon={Megaphone} title={resource.data.length ? 'No matching announcements.' : 'No announcements published yet.'} description={resource.data.length ? 'Try another search or audience filter.' : previewMode ? 'This read-only preview does not load announcements.' : 'Published school notices will appear here.'} action={!previewMode && !resource.data.length && <Button variant="outline" onClick={onAdd}><Plus size={15} /> Publish notice</Button>} />}
+      <TableCard title="School announcements" count={resource.loading ? '…' : resource.data.length} description="Published notices returned by the school service" controls={<><FilterSelect label="Filter notices by audience" value={audience} onChange={(value) => { setAudience(value); setPage(1); }} options={[{ value: 'all', label: 'All audiences' }, { value: 'ALL', label: 'Everyone' }, { value: 'STUDENT', label: 'Students' }, { value: 'TEACHER', label: 'Teachers' }]} />{!previewMode && <IconButton label="Refresh notices" onClick={onRefresh}><ArrowDownToLine size={16} /></IconButton>}</>}>
+        {resource.loading ? <LoadingPanel label="Loading announcements…" /> : resource.error ? <ErrorPanel error={resource.error} onRetry={onRetry} /> : rows.length ? <><div className="adm-table-scroll"><table><thead><tr><th>Announcement</th><th>Audience</th><th>Class</th><th>Posted by</th><th>Attachment</th><th>Published</th><th>Actions</th></tr></thead><tbody>{visible.map((notice) => {
+          const classes = noticeTargetClasses(notice);
+          return <tr key={notice.id}><td><div className="adm-notice-title"><strong>{notice.title}</strong><small>{notice.content}</small></div></td><td>{noticeAudienceLabel(notice)}</td><td>{classes.length ? classes.join(', ') : 'All classes'}</td><td>{notice.created_by || notice.posted_by || '—'}</td><td>{notice.attachment ? <a href={notice.attachment} target="_blank" rel="noreferrer">Open file</a> : '—'}</td><td>{displayDate(notice.created_at)}</td><td><div className="adm-row-actions adm-notice-actions"><button type="button" className="adm-notice-action-btn" onClick={() => onEdit(notice)}><Pencil size={13} />Edit</button><button type="button" className="adm-notice-action-btn is-delete" onClick={() => onDelete(notice)}><Trash2 size={13} />Delete</button></div></td></tr>;
+        })}</tbody></table></div><Pagination count={rows.length} page={page} onChange={setPage} /></> : <EmptyState icon={Megaphone} title={resource.data.length ? 'No announcements match this audience.' : 'No announcements published yet.'} description={resource.data.length ? 'Try a different audience filter.' : previewMode ? 'This read-only preview does not load announcements.' : 'Published school notices will appear here.'} action={!previewMode && !resource.data.length && <Button variant="outline" onClick={onAdd}><Plus size={15} /> Publish notice</Button>} />}
       </TableCard>
-      <p className="adm-capability-note"><ShieldCheck size={14} /> The current notice service supports publishing and viewing. Editing or deleting notices is not connected.</p>
     </>
   );
 }
@@ -662,10 +819,13 @@ function Status({ active, children }) {
   return <span className={`adm-status${active ? ' is-active' : ''}`}><i />{children}</span>;
 }
 
-function Header({ active, profile, query, onQuery, onMenu, onNavigate, onLogout, previewMode }) {
+function Header({ active, profile, query, onQuery, onMenu, onNavigate, onLogout, notificationCount, previewMode }) {
   const current = navigation.find((item) => item.id === active);
+  const notificationLabel = notificationCount
+    ? `Open notices (${notificationCount} published)`
+    : 'Open notices';
   return (
-    <header className="adm-topbar"><div className="adm-topbar-start"><IconButton label="Open navigation" className="adm-menu-button" onClick={onMenu}><Menu size={19} /></IconButton><div className="adm-breadcrumb"><span>{schoolBranding.name}</span><ChevronRight size={14} /><strong>{current.label}</strong></div></div><div className="adm-topbar-actions">{searchSections.has(active) && <SearchBox value={query} onChange={onQuery} placeholder={`Search ${current.label.toLowerCase()}`} label={`Search ${current.label.toLowerCase()}`} />}<IconButton label="Open notices" onClick={() => onNavigate('notices')}><Bell size={18} /></IconButton><span className="adm-topbar-divider" /><div className="adm-account-chip"><span><UserRound size={15} /></span><div><strong>{previewMode ? 'Preview account' : profile.username}</strong><small>{previewMode ? '' : profile.role === 'SUPER_ADMIN' ? 'Super admin' : 'School admin'}</small></div></div>{onLogout && <IconButton label="Sign out" onClick={onLogout}><LogOut size={17} /></IconButton>}</div></header>
+    <header className="adm-topbar"><div className="adm-topbar-start"><IconButton label="Open navigation" className="adm-menu-button" onClick={onMenu}><Menu size={19} /></IconButton><div className="adm-breadcrumb"><span>{schoolBranding.name}</span><ChevronRight size={14} /><strong>{current.label}</strong></div></div><div className="adm-topbar-actions">{searchSections.has(active) && <SearchBox value={query} onChange={onQuery} placeholder={`Search ${current.label.toLowerCase()}`} label={`Search ${current.label.toLowerCase()}`} />}<IconButton label={notificationLabel} className="adm-notification-button" onClick={() => onNavigate('notices')}><Bell size={18} />{notificationCount > 0 && <span className="adm-notification-badge" aria-hidden="true">{notificationCount > 9 ? '9+' : notificationCount}</span>}</IconButton><span className="adm-topbar-divider" /><div className="adm-account-chip"><span><UserRound size={15} /></span><div><strong>{previewMode ? 'Preview account' : profile.username}</strong><small>{previewMode ? '' : profile.role === 'SUPER_ADMIN' ? 'Super admin' : 'School admin'}</small></div></div>{onLogout && <IconButton label="Sign out" onClick={onLogout}><LogOut size={17} /></IconButton>}</div></header>
   );
 }
 
@@ -694,6 +854,9 @@ export default function AdminDashboard({ onLogout, previewMode = false }) {
   const [deactivating, setDeactivating] = useState(false);
   const [confirmStudent, setConfirmStudent] = useState(null);
   const [confirmError, setConfirmError] = useState('');
+  const [confirmNotice, setConfirmNotice] = useState(null);
+  const [deletingNotice, setDeletingNotice] = useState(false);
+  const [noticeDeleteError, setNoticeDeleteError] = useState('');
   const [credentials, setCredentials] = useState(null);
   const [notice, setNotice] = useState(null);
 
@@ -734,6 +897,7 @@ export default function AdminDashboard({ onLogout, previewMode = false }) {
       .then((data) => {
         if (!Array.isArray(data)) throw new Error('The server returned an invalid records response.');
         setResources((current) => ({ ...current, [key]: { data, loading: false, error: null } }));
+        if (key === 'notices') setDashboardNotices(data);
       })
       .catch((error) => {
         setResources((current) => ({ ...current, [key]: { ...current[key], loading: false, error: getErrorMessage(error) } }));
@@ -845,13 +1009,47 @@ export default function AdminDashboard({ onLogout, previewMode = false }) {
   async function submitNotice(values) {
     setMutating(true);
     try {
-      const created = await adminRequest(adminEndpoints.notices, auth.token, { method: 'POST', body: JSON.stringify(values) });
-      replaceResource('notices', (current) => ({ data: [created, ...current.data] }));
-      updateDashboardNotices((current) => [created, ...current]);
+      const body = new FormData();
+      body.append('title', values.title);
+      body.append('content', values.content);
+      values.target_roles.forEach((role) => body.append('target_roles', role));
+      body.append('target_classes', JSON.stringify(values.target_classes));
+      if (values.attachment) body.append('attachment', values.attachment);
+
+      const editing = Boolean(dialog?.record);
+      const saved = await adminRequest(
+        editing ? adminEndpoints.notice(dialog.record.id) : adminEndpoints.notices,
+        auth.token,
+        { method: editing ? 'PATCH' : 'POST', body },
+      );
+      if (editing) {
+        replaceResource('notices', (current) => ({ data: current.data.map((item) => item.id === saved.id ? saved : item) }));
+        updateDashboardNotices((current) => current.map((item) => item.id === saved.id ? saved : item));
+      } else {
+        replaceResource('notices', (current) => ({ data: [saved, ...current.data] }));
+        updateDashboardNotices((current) => [saved, ...current]);
+      }
       setDialog(null);
-      setNotice('Announcement published by the server.');
+      setNotice(editing ? 'Announcement updated.' : 'Announcement published.');
     } finally {
       setMutating(false);
+    }
+  }
+
+  async function deleteNotice() {
+    if (!confirmNotice) return;
+    setDeletingNotice(true);
+    setNoticeDeleteError('');
+    try {
+      await adminRequest(adminEndpoints.notice(confirmNotice.id), auth.token, { method: 'DELETE' });
+      replaceResource('notices', (current) => ({ data: current.data.filter((item) => item.id !== confirmNotice.id) }));
+      updateDashboardNotices((current) => current.filter((item) => item.id !== confirmNotice.id));
+      setConfirmNotice(null);
+      setNotice('Announcement deleted.');
+    } catch (error) {
+      setNoticeDeleteError(getErrorMessage(error));
+    } finally {
+      setDeletingNotice(false);
     }
   }
 
@@ -879,20 +1077,20 @@ export default function AdminDashboard({ onLogout, previewMode = false }) {
       <aside className={`adm-sidebar${collapsed ? ' is-collapsed' : ''}${mobileOpen ? ' is-mobile-open' : ''}`}>
         <div className="adm-sidebar-brand"><Brand compact={collapsed} /><IconButton className="adm-collapse-button" label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} onClick={() => setCollapsed((value) => !value)}><ChevronDown size={16} /></IconButton><IconButton className="adm-mobile-close" label="Close menu" onClick={() => setMobileOpen(false)}><X size={18} /></IconButton></div>
         <nav className="adm-navigation" aria-label="Admin navigation">{groups.map((group) => <div className="adm-nav-group" key={group}><span className="adm-nav-label">{group}</span>{navigation.filter((item) => item.group === group).map((item) => <button type="button" key={item.id} className={`adm-nav-item${active === item.id ? ' active' : ''}`} onClick={() => navTo(item.id)} aria-current={active === item.id ? 'page' : undefined} title={collapsed ? item.label : undefined}><item.icon size={18} /><span>{item.label}</span></button>)}</div>)}</nav>
-        <div className="adm-sidebar-footer"><div className="adm-admin-profile"><span className="adm-admin-avatar"><UserRound size={16} /></span><div><strong>{previewMode ? 'Preview account' : auth.profile.username}</strong><small>{previewMode ? '' : auth.profile.role === 'SUPER_ADMIN' ? 'Super admin' : 'School admin'}</small></div></div><p><ShieldCheck size={14} />{previewMode ? 'Read-only preview' : 'Secure EduSure workspace'}</p></div>
+        <div className="adm-sidebar-footer"><div className="adm-admin-profile"><span className="adm-admin-avatar"><UserRound size={16} /></span><div><strong>{previewMode ? 'Preview account' : auth.profile.username}</strong><small>{previewMode ? '' : auth.profile.role === 'SUPER_ADMIN' ? 'Super admin' : 'School admin'}</small></div></div><ContactUs variant="admin" className="adm-sidebar-contact" /></div>
       </aside>
       {mobileOpen && <button className="adm-mobile-scrim" aria-label="Close navigation" onClick={() => setMobileOpen(false)} />}
       <main className={`adm-main${collapsed ? ' is-collapsed' : ''}`}>
-        <Header active={active} profile={auth.profile} query={query} onQuery={setQuery} onMenu={() => window.innerWidth <= 760 ? setMobileOpen(true) : setCollapsed((value) => !value)} onNavigate={navTo} onLogout={onLogout} previewMode={previewMode} />
+        <Header active={active} profile={auth.profile} query={query} onQuery={setQuery} onMenu={() => window.innerWidth <= 760 ? setMobileOpen(true) : setCollapsed((value) => !value)} onNavigate={navTo} onLogout={onLogout} notificationCount={dashboardNotices.length} previewMode={previewMode} />
         <div className="adm-content">
-          {previewMode && <div className="adm-connection-note adm-preview-banner"><span className="adm-connection-dot" />Standalone  <span className="adm-note-separator" />No real school data is loaded or changed.</div>}
-          <div className="adm-content-heading"><span className="adm-breadcrumb-dot" />{current[0]}</div>
+          {previewMode && <div className="adm-connection-note adm-preview-banner">Standalone  <span className="adm-note-separator" />No real school data is loaded or changed.</div>}
+          <div className="adm-content-heading">{current[0]}</div>
           {notice && <div className="adm-toast" role="status"><Check size={15} />{notice}<IconButton label="Dismiss" onClick={() => setNotice(null)}><X size={15} /></IconButton></div>}
           {active === 'dashboard' && <DashboardPage stats={stats} statsLoading={statsLoading} statsError={statsError} notices={dashboardNotices} noticesLoading={dashboardNoticesLoading} noticesError={dashboardNoticesError} onNavigate={navTo} onRefresh={refreshDashboard} profile={auth.profile} previewMode={previewMode} />}
           {active === 'students' && <StudentPage resource={resources.students} query={query} onQuery={setQuery} onAdd={() => setDialog({ kind: 'student', record: null })} onEdit={(record) => setDialog({ kind: 'student', record })} onDeactivate={(record) => { setConfirmError(''); setConfirmStudent(record); }} onRetry={() => loadResource('students')} onRefresh={() => loadResource('students')} onUpload={uploadStudents} previewMode={previewMode} />}
           {active === 'teachers' && <TeacherPage resource={resources.teachers} query={query} onQuery={setQuery} onAdd={() => setDialog({ kind: 'teacher' })} onRetry={() => loadResource('teachers')} onRefresh={() => loadResource('teachers')} previewMode={previewMode} />}
           {active === 'classes' && <ClassesPage stats={stats} statsLoading={statsLoading} statsError={statsError} onRetry={refreshDashboard} query={query} onQuery={setQuery} previewMode={previewMode} />}
-          {active === 'notices' && <NoticesPage resource={resources.notices} query={query} onQuery={setQuery} onAdd={() => setDialog({ kind: 'notice' })} onRetry={() => loadResource('notices')} onRefresh={() => loadResource('notices')} previewMode={previewMode} />}
+          {active === 'notices' && <NoticesPage resource={resources.notices} onAdd={() => setDialog({ kind: 'notice', record: null })} onEdit={(record) => setDialog({ kind: 'notice', record })} onDelete={(record) => { setNoticeDeleteError(''); setConfirmNotice(record); }} onRetry={() => loadResource('notices')} onRefresh={() => loadResource('notices')} previewMode={previewMode} />}
           {active === 'attendance' && <AttendanceManagementPage
             token={auth.token}
             stats={stats}
@@ -909,8 +1107,9 @@ export default function AdminDashboard({ onLogout, previewMode = false }) {
       </main>
       {dialog?.kind === 'student' && <StudentForm record={dialog.record} busy={mutating} onClose={() => setDialog(null)} onSubmit={submitStudent} />}
       {dialog?.kind === 'teacher' && <TeacherForm busy={mutating} onClose={() => setDialog(null)} onSubmit={submitTeacher} />}
-      {dialog?.kind === 'notice' && <NoticeForm busy={mutating} onClose={() => setDialog(null)} onSubmit={submitNotice} />}
+      {dialog?.kind === 'notice' && <NoticeForm record={dialog.record} busy={mutating} onClose={() => setDialog(null)} onSubmit={submitNotice} />}
       {confirmStudent && <ConfirmDialog student={confirmStudent} busy={deactivating} error={confirmError} onCancel={() => setConfirmStudent(null)} onConfirm={() => changeStudentStatus(confirmStudent)} />}
+      {confirmNotice && <Modal title="Delete announcement?" description="This permanently removes the notice and its attachment." onClose={() => setConfirmNotice(null)}><div className="adm-confirm-copy"><span><CircleAlert size={19} /></span><p>Delete <strong>{confirmNotice.title}</strong>? This action cannot be undone.</p></div>{noticeDeleteError && <div className="adm-form-error" role="alert"><CircleAlert size={15} />{noticeDeleteError}</div>}<div className="adm-form-actions"><Button variant="outline" onClick={() => setConfirmNotice(null)}>Cancel</Button><Button variant="danger" disabled={deletingNotice} onClick={deleteNotice}>{deletingNotice ? 'Deleting…' : 'Delete notice'}</Button></div></Modal>}
       {credentials && <CredentialsDialog credentials={credentials} onClose={() => setCredentials(null)} />}
     </div>
   );

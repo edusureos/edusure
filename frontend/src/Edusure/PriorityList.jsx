@@ -174,7 +174,7 @@ export default function PriorityList({
                         {bin.priority}
                       </span>
                       <span className="text-[10px] text-[#788278] truncate hidden sm:inline">
-                        • {bin.location_name}
+                        Location: {bin.location_name}
                       </span>
                     </div>
                     <p className="text-[11px] text-[#788278] truncate mt-0.5">

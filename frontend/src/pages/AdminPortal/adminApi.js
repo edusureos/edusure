@@ -125,6 +125,7 @@ export const adminEndpoints = {
   attendanceReports: '/api/users/attendance/reports/',
   attendanceOverview: '/api/users/attendance/overview/',
   notices: '/notices/',
+  notice: (id) => `/notices/${encodeURIComponent(id)}/`,
   feeSummary: '/api/payments/admin/summary/',
   feeStructures: '/api/payments/admin/fee-structures/',
   feeClassStructures: '/api/payments/admin/class-fee-structures/',

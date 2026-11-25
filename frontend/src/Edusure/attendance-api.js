@@ -51,3 +51,17 @@ export async function fetchAttendance(monthDate, signal) {
 
   return { records, totalDays: Number(payload.total_days) };
 }
+
+export function getCurrentAttendanceStreak(records, today = new Date()) {
+  const chronological = [...records]
+    .sort((a, b) => a.parsedDate - b.parsedDate)
+    .filter((record) => record.parsedDate <= today);
+  let current = 0;
+
+  for (let index = chronological.length - 1; index >= 0; index -= 1) {
+    if (!['PRESENT', 'LATE'].includes(chronological[index].status.toUpperCase())) break;
+    current += 1;
+  }
+
+  return current;
+}

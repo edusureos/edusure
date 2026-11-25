@@ -34,7 +34,7 @@ export default function EduSureLogo({
   return (
     <div className={`flex items-center gap-3 ${className}`}>
       {/* Official Emblem */}
-      <div className={`relative flex-shrink-0 ${iconSizes[size] || iconSizes.md} rounded-xl overflow-hidden shadow-xs border border-slate-200/80 bg-white p-0.5`}>
+      <div className={`christmas-logo-mark relative flex-shrink-0 ${iconSizes[size] || iconSizes.md} rounded-xl shadow-xs border border-slate-200/80 bg-white p-0.5`}>
         <img
           src="/edusure-logo.jpg"
           alt="EduSure"

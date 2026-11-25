@@ -10,12 +10,16 @@ export default function IllustrationSide({ className = '' }) {
     <div
       className={`hidden lg:flex items-center justify-center bg-white border-r border-slate-100 p-8 xl:p-16 select-none ${className}`}
     >
-      <div className="w-full max-w-[420px] xl:max-w-[460px] flex items-center justify-center p-6">
+      <div className="christmas-login-logo w-full max-w-[420px] xl:max-w-[460px] flex items-center justify-center p-6">
         <img
           src="/edusure-logo.jpg"
           alt="EduSure - Teachers Teach. EduSure Ensures."
           className="w-full h-auto object-contain max-h-[480px]"
         />
+        <span className="christmas-login-extra-hats" aria-hidden="true">
+          <span className="christmas-login-extra-hat christmas-login-extra-hat-left" />
+          <span className="christmas-login-extra-hat christmas-login-extra-hat-lower" />
+        </span>
       </div>
     </div>
   );

@@ -221,8 +221,8 @@ export default function AnalyticsView({ analytics, routeResult }) {
         </div>
 
         <div className="pt-2 flex flex-wrap gap-4 text-[11px] text-[#234C36] font-medium">
-          <span>• Emission factor: 2.68 kg CO₂ / liter diesel</span>
-          <span>• Fleet fuel rate: 28.0 L / 100 km</span>
+          <span>Emission factor: 2.68 kg CO₂ / liter diesel</span>
+          <span>Fleet fuel rate: 28.0 L / 100 km</span>
         </div>
       </div>
     </div>

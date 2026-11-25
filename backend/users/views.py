@@ -16,6 +16,7 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from firebase_admin import auth as firebase_auth
 from rest_framework import permissions, status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -339,6 +340,7 @@ class NoticeListCreateView(APIView):
     """GET: Students/Teachers/Admins view school notices | POST: Admin & Teacher create notice"""
 
     permission_classes = [IsAuthenticated]
+    parser_classes = (JSONParser, MultiPartParser, FormParser)
 
     @extend_schema(summary="Fetch notices for logged-in user's school & role", responses={200: NoticeSerializer(many=True)})
     def get(self, request):
@@ -367,7 +369,7 @@ class NoticeListCreateView(APIView):
                         if not classes or (student_class and student_class in classes):
                             notices.append(notice)
 
-        serializer = NoticeSerializer(notices, many=True)
+        serializer = NoticeSerializer(notices, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @extend_schema(
@@ -383,10 +385,13 @@ class NoticeListCreateView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        serializer = NoticeSerializer(data=request.data)
+        serializer = NoticeSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save(school_id=request.user.school_id, created_by=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(
+                NoticeSerializer(serializer.instance, context={'request': request}).data,
+                status=status.HTTP_201_CREATED,
+            )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -394,6 +399,7 @@ class NoticeDetailView(APIView):
     """Retrieve, update (PUT/PATCH), or delete (DELETE) a notice."""
 
     permission_classes = [IsAuthenticated]
+    parser_classes = (JSONParser, MultiPartParser, FormParser)
 
     def _get_notice_or_error(self, request, pk):
         user = request.user
@@ -423,7 +429,7 @@ class NoticeDetailView(APIView):
         notice, error_response = self._get_notice_or_error(request, pk)
         if error_response:
             return error_response
-        return Response(NoticeSerializer(notice).data, status=status.HTTP_200_OK)
+        return Response(NoticeSerializer(notice, context={'request': request}).data, status=status.HTTP_200_OK)
 
     @extend_schema(
         summary="Update a notice (Admin & Teacher)",
@@ -435,10 +441,13 @@ class NoticeDetailView(APIView):
         if error_response:
             return error_response
 
-        serializer = NoticeSerializer(notice, data=request.data, partial=True)
+        serializer = NoticeSerializer(notice, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(
+                NoticeSerializer(serializer.instance, context={'request': request}).data,
+                status=status.HTTP_200_OK,
+            )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @extend_schema(
@@ -455,7 +464,10 @@ class NoticeDetailView(APIView):
         if error_response:
             return error_response
 
+        attachment = notice.attachment
         notice.delete()
+        if attachment:
+            attachment.delete(save=False)
         return Response(
             {"detail": "Notice deleted successfully."},
             status=status.HTTP_200_OK,

@@ -10,17 +10,18 @@ import {
   TrendingUp,
   Calendar,
   Bell,
-  ShieldCheck,
+  Flame,
   Search,
   ArrowRight,
   ChevronRight,
   BookOpen,
 } from 'lucide-react';
 import EduSureLogo from './EduSureLogo';
+import ContactUs from './ContactUs';
 import ProgressReportGraph from './ProgressReportGraph';
 import EmptyState from './EmptyState';
 import AttendancePage from './AttendancePage';
-import { fetchAttendance } from './attendance-api';
+import { fetchAttendance, getCurrentAttendanceStreak } from './attendance-api';
 import FeeSubmission from './FeeSubmission';
 import FacultyAttendancePage from './FacultyAttendancePage';
 
@@ -44,10 +45,16 @@ export default function PortalPage({ onLogout, userId, profile = {}, role, token
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [notices, setNotices] = useState([]);
+  const [isNoticesLoading, setIsNoticesLoading] = useState(Boolean(token));
+  const [noticesError, setNoticesError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [attendanceData, setAttendanceData] = useState(null);
   const [isAttendanceLoading, setIsAttendanceLoading] = useState(true);
   const [attendanceError, setAttendanceError] = useState('');
+  const [streakData, setStreakData] = useState(null);
+  const [isStreakLoading, setIsStreakLoading] = useState(true);
+  const [streakError, setStreakError] = useState('');
   const [submittedUtr, setSubmittedUtr] = useState('');
 
   const dashboardButtons = [
@@ -100,6 +107,60 @@ export default function PortalPage({ onLogout, userId, profile = {}, role, token
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetchAttendance(null, controller.signal)
+      .then(setStreakData)
+      .catch((requestError) => {
+        if (requestError.name !== 'AbortError') setStreakError(requestError.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsStreakLoading(false);
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    if (!token) return undefined;
+
+    const controller = new AbortController();
+
+    fetch('/api/users/notices/', {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        let payload = null;
+        try {
+          payload = await response.json();
+        } catch {
+          if (response.ok) throw new Error('The server returned an invalid notices response.');
+        }
+
+        if (!response.ok) {
+          throw new Error(
+            typeof payload?.detail === 'string'
+              ? payload.detail
+              : `Unable to load notices (${response.status}).`,
+          );
+        }
+        if (!Array.isArray(payload)) {
+          throw new Error('The server returned an invalid notices response.');
+        }
+        setNotices(payload);
+      })
+      .catch((error) => {
+        if (error.name !== 'AbortError') setNoticesError(error.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsNoticesLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [token]);
+
   const todayLabel = useMemo(
     () =>
       new Date().toLocaleDateString('en-IN', {
@@ -134,6 +195,15 @@ export default function PortalPage({ onLogout, userId, profile = {}, role, token
       recordCount: attendanceData.records.length,
     };
   }, [attendanceData]);
+  const streakDays = useMemo(
+    () => streakData ? getCurrentAttendanceStreak(streakData.records) : 0,
+    [streakData],
+  );
+  const streakIsPartial = Boolean(
+    streakData
+      && streakData.totalDays > streakData.records.length
+      && streakDays === streakData.records.length,
+  );
   const profileFields = [
     { label: 'Student Name', value: profileData.studentName },
     { label: 'Class', value: profileData.class },
@@ -260,6 +330,7 @@ export default function PortalPage({ onLogout, userId, profile = {}, role, token
               <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0A192F] font-heading tracking-tight leading-tight break-words">
                 Hello, {studentName}!
               </h2>
+              <p className="christmas-greeting">Season&apos;s Greetings</p>
               <p className="text-xs sm:text-sm text-slate-500 font-medium">
                 {profileData.class ? `Class ${profileData.class}` : EMPTY.profile}
               </p>
@@ -289,11 +360,19 @@ export default function PortalPage({ onLogout, userId, profile = {}, role, token
                 type="button"
                 onClick={() => setIsNotifOpen((prev) => !prev)}
                 className="relative p-2.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200/80 transition-colors cursor-pointer shadow-2xs"
-                title="Notifications"
-                aria-label="View notifications"
+                title={notices.length ? `${notices.length} school notice${notices.length === 1 ? '' : 's'}` : 'Notifications'}
+                aria-label={notices.length ? `View notifications (${notices.length})` : 'View notifications'}
                 aria-expanded={isNotifOpen}
               >
                 <Bell className="w-4.5 h-4.5" />
+                {notices.length > 0 && (
+                  <span
+                    className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-red-600 border-2 border-white text-white text-[9px] font-bold leading-none flex items-center justify-center shadow-sm"
+                    aria-hidden="true"
+                  >
+                    {notices.length > 9 ? '9+' : notices.length}
+                  </span>
+                )}
               </button>
 
               {isNotifOpen && (
@@ -302,8 +381,30 @@ export default function PortalPage({ onLogout, userId, profile = {}, role, token
                     <span className="text-xs font-bold text-[#0A192F] uppercase tracking-wider">
                       School Notices
                     </span>
+                    {notices.length > 0 && (
+                      <span className="text-[10px] font-semibold text-slate-500">{notices.length}</span>
+                    )}
                   </div>
-                  <EmptyState compact icon={Bell} message={EMPTY.notices} />
+                  {isNoticesLoading ? (
+                    <p className="py-3 text-center text-xs text-slate-500">Loading notices…</p>
+                  ) : noticesError ? (
+                    <p className="py-3 text-xs text-red-700" role="alert">{noticesError}</p>
+                  ) : notices.length ? (
+                    <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
+                      {notices.slice(0, 6).map((notice) => (
+                        <article className="py-2.5" key={notice.id}>
+                          <strong className="block text-xs font-semibold text-slate-800">{notice.title}</strong>
+                          {notice.content && (
+                            <p className="mt-1 whitespace-pre-wrap text-[11px] leading-relaxed text-slate-600">
+                              {notice.content}
+                            </p>
+                          )}
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <EmptyState compact icon={Bell} message={EMPTY.notices} />
+                  )}
                 </div>
               )}
             </div>
@@ -321,6 +422,10 @@ export default function PortalPage({ onLogout, userId, profile = {}, role, token
               summary={attendanceSummary}
               isLoading={isAttendanceLoading}
               error={attendanceError}
+              streakDays={streakDays}
+              streakIsPartial={streakIsPartial}
+              isStreakLoading={isStreakLoading}
+              streakError={streakError}
             />
           </div>
           <QuickCard
@@ -479,9 +584,8 @@ export default function PortalPage({ onLogout, userId, profile = {}, role, token
             );
           })}
         </nav>
-        <div className="p-4 border-t border-slate-100 text-[11px] text-slate-400 flex items-center gap-1.5">
-          <ShieldCheck className="w-3.5 h-3.5 text-pla-700" />
-          <span>EduSure Institutional Portal</span>
+        <div className="p-4 border-t border-slate-100">
+          <ContactUs variant="student" />
         </div>
       </aside>
 
@@ -610,7 +714,16 @@ function SectionHeading({ icon: Icon, iconWrap, title, subtitle, badge }) {
   );
 }
 
-function AttendanceMetricCard({ onClick, summary, isLoading, error }) {
+function AttendanceMetricCard({
+  onClick,
+  summary,
+  isLoading,
+  error,
+  streakDays,
+  streakIsPartial,
+  isStreakLoading,
+  streakError,
+}) {
   const percentage = summary?.percentage;
   const radius = 30;
   const circumference = 2 * Math.PI * radius;
@@ -660,6 +773,20 @@ function AttendanceMetricCard({ onClick, summary, isLoading, error }) {
         </div>
         <div className="min-w-0">
           <h3 className="text-lg font-bold text-[#0A192F] font-heading">Attendance</h3>
+          <span
+            className="mt-1 inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2 py-1 text-[10px] font-bold text-orange-700"
+            title={streakError || 'Current attendance streak'}
+            aria-label={streakError ? `Streak unavailable: ${streakError}` : `Current attendance streak: ${streakDays} days`}
+          >
+            <Flame className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>
+              {isStreakLoading
+                ? 'Loading streak'
+                : streakError
+                  ? 'Streak unavailable'
+                  : `${streakIsPartial ? '≥ ' : ''}${streakDays} ${streakDays === 1 ? 'day' : 'days'}`}
+            </span>
+          </span>
           <p className="mt-1 text-xs leading-relaxed text-slate-500">{detail}</p>
         </div>
       </div>

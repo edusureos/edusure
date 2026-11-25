@@ -1,0 +1,104 @@
+.contact-us {
+  min-width: 0;
+}
+
+.contact-us-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.45rem;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.contact-us-toggle:focus-visible,
+.contact-us-person:focus-visible {
+  outline: 2px solid #977016;
+  outline-offset: 2px;
+}
+
+.contact-us-icon {
+  flex: 0 0 auto;
+  color: #977016;
+}
+
+.contact-us-label {
+  flex: 1;
+}
+
+.contact-us-chevron {
+  flex: 0 0 auto;
+  transition: transform 160ms ease;
+}
+
+.contact-us.is-open .contact-us-chevron {
+  transform: rotate(180deg);
+}
+
+.contact-us-panel {
+  display: grid;
+  gap: 0.2rem;
+  margin-top: 0.45rem;
+  padding: 0.35rem;
+  border: 1px solid #e8debe;
+  border-radius: 0.65rem;
+  background: #fffdf8;
+}
+
+.contact-us-panel[hidden] {
+  display: none;
+}
+
+.contact-us-person {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 0.4rem;
+  color: #0a192f;
+  text-decoration: none;
+}
+
+.contact-us-person:hover {
+  background: #fff3d3;
+}
+
+.contact-us-name {
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.contact-us-number {
+  color: #64748b;
+  font-size: 0.66rem;
+  font-weight: 600;
+}
+
+.contact-us-student .contact-us-toggle {
+  padding: 0;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.contact-us-student .contact-us-toggle:hover {
+  color: #0a192f;
+}
+
+.contact-us-admin .contact-us-toggle {
+  padding-top: 10px;
+  border-top: 1px solid #edf1f5;
+  color: #859292;
+  font-size: 9px;
+}
+
+.contact-us-admin .contact-us-panel {
+  border-color: #e8debe;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contact-us-chevron {
+    transition: none;
+  }
+}

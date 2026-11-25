@@ -1,12 +1,107 @@
+import tempfile
+from pathlib import Path
+
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .models import Attendance, StudentProfile, TeacherProfile
+from .models import Attendance, Notice, StudentProfile, TeacherProfile
+from .serializers import NoticeSerializer
 
 
 User = get_user_model()
+
+
+class NoticeManagementTests(APITestCase):
+    endpoint = '/api/users/notices/'
+
+    def setUp(self):
+        self.media_dir = tempfile.TemporaryDirectory()
+        media_settings = override_settings(MEDIA_ROOT=self.media_dir.name)
+        media_settings.enable()
+        self.addCleanup(media_settings.disable)
+        self.addCleanup(self.media_dir.cleanup)
+        self.admin = User.objects.create_user(
+            username='1012260091',
+            password='test-password',
+            role=User.Role.SCHOOL_ADMIN,
+            school_id=101,
+        )
+        self.client.force_authenticate(user=self.admin)
+
+    def test_admin_can_create_update_and_delete_notice_with_attachment(self):
+        upload = SimpleUploadedFile(
+            'assembly.pdf',
+            b'%PDF-1.7\nnotice details',
+            content_type='application/pdf',
+        )
+        response = self.client.post(
+            self.endpoint,
+            {
+                'title': 'Assembly',
+                'content': 'Assembly is at 9 AM.',
+                'target_roles': ['STUDENT', 'TEACHER'],
+                'target_classes': '["6A","7B"]',
+                'attachment': upload,
+            },
+            format='multipart',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['target_roles'], ['STUDENT', 'TEACHER'])
+        self.assertEqual(response.data['target_classes'], ['6A', '7B'])
+        self.assertIn('/media/notices/school_101/', response.data['attachment'])
+        notice = Notice.objects.get(pk=response.data['id'])
+        attachment_path = Path(notice.attachment.path)
+        self.assertTrue(attachment_path.exists())
+
+        response = self.client.patch(
+            f'{self.endpoint}{notice.pk}/',
+            {
+                'title': 'Updated assembly',
+                'target_roles': ['TEACHER'],
+                'target_classes': '[]',
+            },
+            format='multipart',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['title'], 'Updated assembly')
+        self.assertEqual(response.data['target_roles'], ['TEACHER'])
+        self.assertEqual(response.data['target_classes'], [])
+        self.assertEqual(Path(Notice.objects.get(pk=notice.pk).attachment.path), attachment_path)
+
+        response = self.client.delete(f'{self.endpoint}{notice.pk}/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(Notice.objects.filter(pk=notice.pk).exists())
+        self.assertFalse(attachment_path.exists())
+
+    def test_notice_attachments_reject_wrong_file_signatures_and_oversize_files(self):
+        base_data = {
+            'title': 'Attachment checks',
+            'content': 'Test attachment validation.',
+            'target_roles': ['ALL'],
+            'target_classes': [],
+        }
+        invalid_signature = NoticeSerializer(data={
+            **base_data,
+            'attachment': SimpleUploadedFile('invalid.pdf', b'not a PDF'),
+        })
+        self.assertFalse(invalid_signature.is_valid())
+        self.assertIn('attachment', invalid_signature.errors)
+
+        oversize = NoticeSerializer(data={
+            **base_data,
+            'attachment': SimpleUploadedFile(
+                'large.pdf',
+                b'%PDF-' + b'x' * (10 * 1024 * 1024),
+            ),
+        })
+        self.assertFalse(oversize.is_valid())
+        self.assertIn('attachment', oversize.errors)
 
 
 class BulkStudentEnrollmentTests(APITestCase):

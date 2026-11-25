@@ -1783,13 +1783,24 @@
    ========================================================================== */
 
 .fee-types-page {
+  --fee-lavender: #f3e5b9;
   animation: fee-enter 160ms ease-out both;
+}
+
+.fee-types-page .fee-popup-body {
+  background: #fffaf0;
+}
+
+.fee-types-page .fee-popup-input,
+.fee-types-page .fee-popup-select {
+  border-color: #e8ddc1;
+  background: #fffdf7;
 }
 
 .fee-types-card {
   --clay-card-bg: var(--clay-surface);
-  --clay-edge-start: rgb(191 148 45 / 34%);
-  --clay-edge-end: rgb(36 57 84 / 20%);
+  --clay-edge-start: rgb(191 148 45 / 40%);
+  --clay-edge-end: rgb(191 148 45 / 18%);
   border: 1px solid transparent;
   border-radius: var(--radius-edusure-card, 1.5rem);
   background:
@@ -1802,8 +1813,8 @@
 
 /* EduSure Signature Clay Banner Header */
 .fee-types-banner {
-  background: linear-gradient(135deg, #0A192F 0%, #192338 55%, #5D430D 100%);
-  color: #ffffff;
+  background: linear-gradient(135deg, #fff8e6 0%, #fff1c8 58%, #f6e5b8 100%);
+  color: #26364a;
   padding: 16px 24px;
   display: flex;
   align-items: center;
@@ -1817,16 +1828,16 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  color: #ffffff;
+  color: #26364a;
 }
 
 .fee-gear-icon-wrap {
   width: 38px;
   height: 38px;
   border-radius: 12px;
-  background: linear-gradient(135deg, rgb(191 148 45 / 22%) 0%, rgb(36 57 84 / 12%) 100%);
-  border: 1px solid rgb(191 148 45 / 34%);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  background: linear-gradient(135deg, #fffdf6 0%, #f8e9be 100%);
+  border: 1px solid #e8cf8c;
+  box-shadow: 2px 3px 8px rgb(191 148 45 / 16%), inset 0 1px 0 rgba(255, 255, 255, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1838,7 +1849,7 @@
   font-family: var(--font-heading, "Plus Jakarta Sans", sans-serif);
   font-size: 17px;
   font-weight: 700;
-  color: #ffffff;
+  color: #26364a;
   margin: 0;
   line-height: 1.25;
   letter-spacing: -0.3px;
@@ -1846,7 +1857,7 @@
 
 .fee-types-banner-subtitle {
   font-size: 11.5px;
-  color: #F3DEAA;
+  color: #80621b;
   font-weight: 500;
   display: block;
   margin-top: 2px;
@@ -1894,6 +1905,7 @@
 /* Body */
 .fee-types-body {
   padding: 22px 24px;
+  background: #fffdf7;
 }
 
 .fee-types-count {
@@ -1908,9 +1920,9 @@
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   border-radius: 14px;
-  border: 1px solid #E2E8F0;
-  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
-  background: #ffffff;
+  border: 1px solid #eee1bd;
+  box-shadow: inset 0 1px 2px rgb(132 98 27 / 5%);
+  background: #fffef9;
 }
 
 .fee-types-table {
@@ -1925,8 +1937,8 @@
   font-size: 12px;
   font-weight: 700;
   color: #0A192F;
-  background: #F8FAFC;
-  border-bottom: 1px solid #E2E8F0;
+  background: #fff5da;
+  border-bottom: 1px solid #eee1bd;
   white-space: nowrap;
   font-family: var(--font-heading, "Plus Jakarta Sans", sans-serif);
 }
@@ -1934,7 +1946,7 @@
 .fee-types-table td {
   padding: 14px 16px;
   color: #334155;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid #f3ead2;
   vertical-align: middle;
 }
 
@@ -1943,7 +1955,7 @@
 }
 
 .fee-types-table tbody tr:hover {
-  background-color: var(--fee-lavender);
+  background-color: #fff9e9;
 }
 
 .fee-types-table tbody tr:last-child td {
@@ -2269,7 +2281,24 @@
    ========================================================================== */
 
 .fee-structures-page {
+  --fee-lavender: #f3e5b9;
   animation: fee-enter 160ms ease-out both;
+}
+
+.fee-structures-page .fee-check-field input,
+.fee-structures-page .fee-type-options input,
+.fee-structures-page .fee-frequency-options input {
+  accent-color: #b78925;
+}
+
+.fee-structures-page .fee-frequency-options {
+  border-color: #e8ddc1;
+  background: #fffaf0;
+}
+
+.fee-structures-page .fee-frequency-options > div > label {
+  border-color: #eee1bd;
+  background: #fffdf7;
 }
 
 /* Top bar with total classes counter, filter chips, and search */
@@ -2293,14 +2322,14 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  background: #EDF7EF;
-  border: 1.5px solid var(--fee-green);
+  background: #fff8e6;
+  border: 1.5px solid #e8cf8c;
   border-radius: 9999px;
   padding: 6px 14px;
   font-size: 11.5px;
   font-weight: 650;
   color: #0A192F;
-  box-shadow: 2px 3px 8px rgb(191 148 45 / 18%), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  box-shadow: 2px 3px 8px rgb(191 148 45 / 14%), inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .fee-total-classes-badge strong {
@@ -2316,30 +2345,30 @@
 }
 
 .fee-group-chip {
-  background: #FFFFFF;
-  border: 1px solid #E2E8F0;
+  background: #fffdf7;
+  border: 1px solid #eee1bd;
   border-radius: 9999px;
   padding: 5px 12px;
   font-size: 11px;
   font-weight: 600;
-  color: #475569;
+  color: #596477;
   cursor: pointer;
   transition: all 130ms ease;
-  box-shadow: 1px 2px 4px rgba(148, 163, 184, 0.08);
+  box-shadow: 1px 2px 4px rgb(148 116 36 / 7%);
 }
 
 .fee-group-chip:hover {
-  border-color: var(--fee-lavender);
-  background: #F8F6FD;
-  color: #2E2856;
+  border-color: #e5ca79;
+  background: #fff7df;
+  color: #6f5518;
 }
 
 .fee-group-chip.is-active {
-  background: var(--fee-lavender);
-  border-color: #BFA9DC;
-  color: #2E2856;
+  background: #f8e9be;
+  border-color: #e0c16d;
+  color: #624b14;
   font-weight: 700;
-  box-shadow: 2px 3px 8px rgba(215, 200, 235, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  box-shadow: 2px 3px 8px rgb(191 148 45 / 14%), inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .fee-classes-bar-right {
@@ -2352,12 +2381,12 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  background: #FFFFFF;
-  border: 1px solid #E2E8F0;
+  background: #fffdf7;
+  border: 1px solid #eee1bd;
   border-radius: 10px;
   padding: 5px 10px;
   color: #64748B;
-  box-shadow: inset 1px 1px 3px rgba(148, 163, 184, 0.08);
+  box-shadow: inset 1px 1px 3px rgb(148 116 36 / 7%);
 }
 
 .fee-class-search-box input {
@@ -2392,17 +2421,17 @@
   min-width: 0;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid #d5dce5;
+  border: 1px solid #eee1bd;
   border-radius: 16px;
-  background: #FFFFFF;
-  box-shadow: 6px 8px 18px rgba(148, 163, 184, 0.12), -4px -4px 14px rgba(255, 255, 255, 0.95);
+  background: #fffdf7;
+  box-shadow: 6px 8px 18px rgb(148 116 36 / 9%), -4px -4px 14px rgba(255, 255, 255, 0.95);
   transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .fee-struct-card:hover {
   transform: translateY(-2px);
-  border-color: var(--fee-green);
-  box-shadow: 8px 14px 26px rgb(191 148 45 / 20%), -4px -4px 16px rgba(255, 255, 255, 0.95);
+  border-color: #e1c36f;
+  box-shadow: 8px 14px 26px rgb(191 148 45 / 16%), -4px -4px 16px rgba(255, 255, 255, 0.95);
 }
 
 /* Header Banner matching Screenshot 1 */
@@ -2413,10 +2442,11 @@
   justify-content: space-between;
   gap: 10px;
   padding: 12px 14px;
-  background: linear-gradient(135deg, #373A8E 0%, #4D44B5 100%);
-  color: #FFFFFF;
+  background: linear-gradient(135deg, #fff7df 0%, #f5e2b2 100%);
+  color: #26364a;
+  border-bottom: 1px solid #ead8a3;
   border-radius: 15px 15px 0 0;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
 }
 
 .fee-struct-header-left {
@@ -2430,7 +2460,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #FFFFFF;
+  color: #8a681d;
   flex-shrink: 0;
 }
 
@@ -2442,7 +2472,7 @@
   font-family: var(--font-heading, "Plus Jakarta Sans", sans-serif);
   font-size: 13.5px;
   font-weight: 750;
-  color: #FFFFFF;
+  color: #26364a;
   letter-spacing: -0.2px;
   white-space: nowrap;
   overflow: hidden;
@@ -2452,9 +2482,9 @@
 
 /* Capsule badge: "1/6 set", "0/5 set" */
 .fee-struct-badge-set {
-  background: rgba(215, 200, 235, 0.22);
-  border: 1px solid rgba(215, 200, 235, 0.45);
-  color: #FFFFFF;
+  background: rgb(191 148 45 / 13%);
+  border: 1px solid rgb(148 104 17 / 25%);
+  color: #70551a;
   font-size: 10px;
   font-weight: 700;
   padding: 3px 9px;
@@ -2484,16 +2514,16 @@
   justify-content: space-between;
   gap: 8px;
   padding: 8px 10px;
-  background: #FFFFFF;
-  border: 1px solid #EAEFF5;
+  background: #fffef9;
+  border: 1px solid #f0e5c7;
   border-radius: 10px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
   transition: border-color 130ms ease, background 130ms ease;
 }
 
 .fee-struct-cat-item:hover {
-  border-color: var(--fee-lavender);
-  background: #FDFCFF;
+  border-color: #e8d39a;
+  background: #fff9e9;
 }
 
 .fee-struct-cat-info {
@@ -2547,29 +2577,29 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  background: #F8FAFD;
+  background: #fffaf0;
   transition: all 130ms ease;
 }
 
 .fee-cat-btn-edit {
-  border: 1px solid #CBD5E1;
-  color: #4338CA;
+  border: 1px solid #e5ce8c;
+  color: #92701f;
 }
 
 .fee-cat-btn-edit:hover {
-  background: #EEF2FF;
-  border-color: #818CF8;
+  background: #fff3d2;
+  border-color: #d5b052;
   transform: translateY(-1px);
 }
 
 .fee-cat-btn-view {
-  border: 1px solid #CBD5E1;
-  color: #2563EB;
+  border: 1px solid #e5ce8c;
+  color: #80621b;
 }
 
 .fee-cat-btn-view:hover {
-  background: #EFF6FF;
-  border-color: #60A5FA;
+  background: #fff3d2;
+  border-color: #d5b052;
   transform: translateY(-1px);
 }
 
@@ -2591,7 +2621,7 @@
   min-height: 80px;
   flex: 1;
   padding: 22px 10px;
-  color: #94A3B8;
+  color: #93886c;
   font-size: 11px;
   font-weight: 500;
   text-align: center;
@@ -2605,8 +2635,8 @@
   justify-content: space-between;
   gap: 8px;
   padding: 9px 13px;
-  border-top: 1px solid #F1F5F9;
-  background: #FAFAFC;
+  border-top: 1px solid #f0e5c7;
+  background: #fffaf0;
   border-radius: 0 0 15px 15px;
 }
 
@@ -2641,9 +2671,9 @@
 }
 
 .fee-assign-btn:disabled {
-  background: #E2E8F0;
-  color: #94A3B8;
-  border-color: #CBD5E1;
+  background: #f4efdf;
+  color: #978d74;
+  border-color: #e2d9bf;
   cursor: not-allowed;
   box-shadow: none;
   transform: none;
@@ -2680,14 +2710,14 @@
 }
 
 .fee-customise-class-link:hover {
-  color: #4D44B5;
+  color: #80621b;
   text-decoration: underline;
 }
 
 /* Modals & Popups matching Screenshot 2 */
 .fee-custom-class-modal {
   width: min(520px, 94vw);
-  background: #FFFFFF;
+  background: #fffdf7;
   border-radius: 20px;
   overflow: hidden;
   box-shadow: 0 25px 60px rgba(10, 25, 47, 0.35);
@@ -2697,20 +2727,20 @@
 }
 
 .fee-custom-class-header {
-  background: linear-gradient(135deg, #373A8E 0%, #4D44B5 100%);
-  color: #FFFFFF;
+  background: linear-gradient(135deg, #fff7df 0%, #f5e2b2 100%);
+  color: #26364a;
   padding: 14px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
 }
 
 .fee-custom-class-header h2 {
   font-family: var(--font-heading, "Plus Jakarta Sans", sans-serif);
   font-size: 16px;
   font-weight: 750;
-  color: #FFFFFF;
+  color: #26364a;
   margin: 0;
   letter-spacing: -0.2px;
 }
@@ -2719,9 +2749,9 @@
   width: 28px;
   height: 28px;
   border-radius: 9999px;
-  background: rgba(215, 200, 235, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  color: #FFFFFF;
+  background: rgb(191 148 45 / 14%);
+  border: 1px solid rgb(148 104 17 / 24%);
+  color: #70551a;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2730,28 +2760,28 @@
 }
 
 .fee-modal-round-close:hover {
-  background: rgba(215, 200, 235, 0.45);
+  background: rgb(191 148 45 / 24%);
   transform: scale(1.06);
 }
 
 .fee-custom-class-body {
   padding: 22px 24px;
-  background: #FAFBF9;
+  background: #fffaf0;
   display: flex;
   flex-direction: column;
 }
 
 /* Privacy Notice matching Screenshot 2 */
 .fee-custom-class-notice {
-  background: #EEF2FF;
-  border: 1px solid var(--fee-lavender);
+  background: #fff8e6;
+  border: 1px solid #ead8a3;
   border-radius: 12px;
   padding: 10px 14px;
   display: flex;
   align-items: center;
   gap: 10px;
   margin-bottom: 16px;
-  color: #3730A3;
+  color: #6c541d;
   font-size: 11.5px;
   font-weight: 550;
   line-height: 1.4;
@@ -2759,7 +2789,7 @@
 
 .fee-notice-icon {
   flex-shrink: 0;
-  color: #4D44B5;
+  color: #94711f;
 }
 
 .fee-custom-class-actions {
@@ -2800,9 +2830,9 @@
 }
 
 .fee-modal-cancel-btn {
-  background: #FFFFFF;
+  background: #fffdf7;
   color: #475569;
-  border: 1px solid #CBD5E1;
+  border: 1px solid #e8ddc1;
   border-radius: 10px;
   padding: 8px 16px;
   font-size: 12px;
@@ -2813,7 +2843,7 @@
 }
 
 .fee-modal-cancel-btn:hover {
-  background: #F1F5F9;
+  background: #fff6dd;
   color: #1E293B;
 }
 
@@ -2835,7 +2865,7 @@
 }
 
 .fee-cat-edit-summary {
-  background: #F1F5F9;
+  background: #fff8e6;
   border-radius: 10px;
   padding: 10px 14px;
   display: flex;
@@ -2863,14 +2893,14 @@
 }
 
 .fee-detail-stat-card {
-  background: #FFFFFF;
+  background: #fffdf7;
   border: 1px solid var(--fee-lavender);
   border-radius: 12px;
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  box-shadow: 1px 2px 5px rgba(215, 200, 235, 0.15);
+  box-shadow: 1px 2px 5px rgb(191 148 45 / 10%);
 }
 
 .fee-detail-stat-card span {
@@ -2902,8 +2932,8 @@
 }
 
 .fee-detail-cat-card {
-  background: #FFFFFF;
-  border: 1px solid #E2E8F0;
+  background: #fffef9;
+  border: 1px solid #f0e5c7;
   border-radius: 10px;
   padding: 10px 12px;
 }
@@ -2918,7 +2948,7 @@
 .fee-detail-cat-amount {
   font-size: 12px;
   font-weight: 750;
-  color: var(--fee-green);
+  color: #80621b;
 }
 
 .fee-detail-cat-badges {
@@ -2958,15 +2988,17 @@
 }
 
 .fee-struct-secondary {
-  border: 1px solid var(--fee-lavender);
-  background: #FFFFFF;
-  color: #2E2856;
+  border: 1px solid #e5ce8c;
+  background: #fffdf7;
+  color: #70551a;
 }
 
 .fee-struct-secondary:hover:not(:disabled) {
-  border-color: #BFA9DC;
-  background: #FAF8FD;
+  border-color: #d5b052;
+  background: #fff6dd;
 }
+
+
 
 .fee-classes-actions {
   display: flex;
