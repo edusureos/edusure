@@ -624,7 +624,13 @@
 
 .fee-select-wrap select {
   appearance: none;
+  -webkit-appearance: none;
   padding-right: 32px;
+}
+
+.fee-select-wrap select::-ms-expand,
+.fee-popup-select::-ms-expand {
+  display: none;
 }
 
 .fee-select-wrap > svg {
@@ -2130,6 +2136,7 @@
   color: #0A192F;
   background: #FFFFFF;
   appearance: none;
+  -webkit-appearance: none;
   cursor: pointer;
   box-sizing: border-box;
   font-family: inherit;

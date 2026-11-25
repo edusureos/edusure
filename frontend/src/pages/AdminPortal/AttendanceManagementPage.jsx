@@ -5,6 +5,7 @@ import {
   Filter, Search, Users, UserRoundCheck,
 } from 'lucide-react';
 import { adminEndpoints, adminRequest } from './adminApi';
+import ExportMenu from './ExportMenu';
 import './attendance-management.css';
 
 function localDate(value) {
@@ -97,20 +98,30 @@ function EmptyPanel({ title, children }) {
   );
 }
 
-function AttendanceTable({ columns, rows, emptyMessage }) {
-  if (!rows.length) return <EmptyPanel title="No attendance records found.">{emptyMessage}</EmptyPanel>;
+function AttendanceTable({ columns, rows, emptyMessage, exportTitle = 'Attendance report' }) {
+  const exportRows = rows.map((row) => Object.fromEntries(
+    Object.entries(row).filter(([field]) => field !== 'key'),
+  ));
   return (
-    <div className="att-table-scroll">
-      <table className="att-report-table">
-        <thead><tr>{columns.map((column) => <th key={column.key}>{column.label}</th>)}</tr></thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.key}>
-              {columns.map((column) => <td key={column.key}>{column.render ? column.render(row) : (row[column.key] ?? '—')}</td>)}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="att-table-content">
+      <div className="att-table-actions">
+        <span>{rows.length} {rows.length === 1 ? 'record' : 'records'}</span>
+        <ExportMenu rows={exportRows} title={exportTitle} disabled={!rows.length} />
+      </div>
+      {!rows.length ? <EmptyPanel title="No attendance records found.">{emptyMessage}</EmptyPanel> : (
+        <div className="att-table-scroll">
+          <table className="att-report-table">
+            <thead><tr>{columns.map((column) => <th key={column.key}>{column.label}</th>)}</tr></thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.key}>
+                  {columns.map((column) => <td key={column.key}>{column.render ? column.render(row) : (row[column.key] ?? '—')}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -513,6 +524,7 @@ export default function AttendanceManagementPage({
                       ]}
                       rows={data.students.map((row) => ({ ...row, key: row.student_id }))}
                       emptyMessage="Try another student name or ID, or adjust the class and date filters."
+                      exportTitle="Student attendance report"
                     />
                   </section>
                   {data.selected_student && (
@@ -526,6 +538,7 @@ export default function AttendanceManagementPage({
                         ]}
                         rows={data.student_records.map((record, index) => ({ ...record, key: `${record.date}-${index}` }))}
                         emptyMessage="No attendance records were recorded for this student in the selected date range."
+                        exportTitle="Student attendance history"
                       />
                     </section>
                   )}
@@ -539,6 +552,7 @@ export default function AttendanceManagementPage({
                     columns={studentColumns}
                     rows={data.students.map((row) => ({ ...row, key: row.student_id }))}
                     emptyMessage="No students or attendance records match the selected class and date range."
+                    exportTitle="Class attendance report"
                   />
                 </section>
               )}
@@ -550,6 +564,7 @@ export default function AttendanceManagementPage({
                     columns={studentColumns}
                     rows={data.students.map((row) => ({ ...row, key: row.student_id }))}
                     emptyMessage="No students match this attendance threshold for the selected date range."
+                    exportTitle="Attendance threshold report"
                   />
                 </section>
               )}
@@ -613,6 +628,7 @@ export default function AttendanceManagementPage({
                   ]}
                   rows={submissionRows.map((row, index) => ({ ...row, key: `${row.class_grade}-${row.section}-${index}` }))}
                   emptyMessage="No class or section records are available."
+                  exportTitle="Attendance submission status"
                 />
               </section>
             </div>

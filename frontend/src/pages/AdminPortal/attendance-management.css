@@ -243,6 +243,8 @@
 .att-metric-card > span { color: #67778a; font-size: 10px; font-weight: 650; }
 .att-metric-card > strong { color: var(--att-navy); font-size: 23px; font-weight: 800; letter-spacing: -.4px; }
 .att-metric-card > small { color: #8794a3; font-size: 9px; }
+.att-table-content { min-width: 0; }
+.att-table-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; color: #788697; font-size: 10px; }
 .att-table-scroll { width: 100%; overflow-x: auto; }
 .att-report-table { width: 100%; border-collapse: collapse; text-align: left; }
 .att-report-table th { padding: 9px 10px; border-bottom: 1px solid #e6ecf1; background: #f7f9fb; color: #69798d; font-size: 9px; font-weight: 750; white-space: nowrap; }
@@ -288,6 +290,7 @@
   .att-filter-actions .att-primary-button { flex: 1; }
   .att-report-tabs button { padding: 0 10px; font-size: 10px; }
   .att-results-heading { align-items: flex-start; }
+  .att-table-actions { align-items: flex-start; }
   .att-live-badge { margin-top: 2px; }
   .att-submission-date { align-items: stretch; flex-direction: column; }
   .att-submission-date label { width: 100%; }

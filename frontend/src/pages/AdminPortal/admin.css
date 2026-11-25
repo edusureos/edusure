@@ -1907,46 +1907,88 @@ button:disabled {
   background: var(--clay-canvas);
 }
 
-.adm-export-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
+.adm-export-menu {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
 }
 
-.adm-export-button {
-  min-height: 29px;
-  padding: 0 7px;
-  border: 1px solid #e1e7ed;
-  border-radius: 7px;
-  background: #fff;
-  color: #607087;
+.adm-export-trigger {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid #e8debe;
+  border-radius: 9px;
+  background: var(--clay-surface);
+  color: #78570f;
+  box-shadow: var(--clay-shadow-inset);
   cursor: pointer;
-  font-size: 8px;
+  font: inherit;
+  font-size: 10px;
   font-weight: 700;
   white-space: nowrap;
 }
 
-.adm-export-button:hover:not(:disabled) {
-  border-color: #b8d5bc;
-  background: #f3f8f3;
-  color: var(--adm-green-dark);
+.adm-export-trigger:hover:not(:disabled) {
+  border-color: #dec77f;
+  background: #fff8e6;
 }
 
-.adm-export-button:disabled {
+.adm-export-trigger:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.adm-export-dropdown {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  right: 0;
+  display: grid;
+  min-width: 154px;
+  gap: 3px;
+  padding: 5px;
+  border: 1px solid #e8debe;
+  border-radius: 11px;
+  background: #fffdf8;
+  box-shadow: 6px 8px 20px rgb(65 54 34 / 17%), -3px -3px 10px rgb(255 255 255 / 90%);
+}
+
+.adm-export-dropdown > button {
+  min-height: 33px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #263445;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  text-align: left;
+}
+
+.adm-export-dropdown > button:hover:not(:disabled) {
+  background: #fff3d3;
+  color: #78570f;
+}
+
+.adm-export-dropdown > button:disabled {
   cursor: wait;
   opacity: .6;
 }
 
 .adm-export-error {
-  flex: 1 0 100%;
+  margin: 3px 5px 5px;
   color: #a33939;
   font-size: 9px;
 }
 
 .adm-attendance-controls {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto auto;
   align-items: end;
   gap: 11px;
   margin-bottom: 14px;
@@ -1986,9 +2028,68 @@ button:disabled {
   white-space: nowrap;
 }
 
-.adm-attendance-controls > .adm-export-controls {
+.adm-attendance-controls > .adm-export-menu {
   grid-column: 1 / -1;
   justify-self: end;
+}
+
+.adm-credentials-list {
+  min-width: 0;
+  margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid #e8debe;
+  border-radius: 10px;
+  background: #fffdf8;
+}
+
+.adm-credentials-list-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #eee6d4;
+  color: #27394c;
+  font-size: 10px;
+}
+
+.adm-credentials-list-head span {
+  color: #83908a;
+}
+
+.adm-credentials-table-scroll {
+  max-height: 260px;
+  overflow: auto;
+}
+
+.adm-credentials-table-scroll table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.adm-credentials-table-scroll th,
+.adm-credentials-table-scroll td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #f0ede5;
+  color: #526176;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.adm-credentials-table-scroll th {
+  position: sticky;
+  top: 0;
+  background: #f8f5eb;
+  color: #657187;
+  font-weight: 750;
+}
+
+.adm-credentials-table-scroll tr:last-child td {
+  border-bottom: 0;
+}
+
+.adm-form-actions > .adm-export-menu {
+  margin-right: auto;
 }
 
 .adm-attendance-feedback {
@@ -2212,8 +2313,9 @@ button:disabled {
     grid-column: 1 / -1;
   }
 
-  .adm-attendance-controls > .adm-export-controls {
+  .adm-attendance-controls > .adm-export-menu {
     justify-self: start;
+    grid-column: 1 / -1;
   }
 
   .adm-attendance-summary {

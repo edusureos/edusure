@@ -5,6 +5,7 @@ import {
   ReceiptText, RefreshCw, Save, Search, Settings, ShieldCheck, Tag, Trash2, Users, WalletCards, X,
 } from 'lucide-react';
 import { adminEndpoints, adminRequest, downloadAdminFeeReceipt } from './adminApi';
+import ExportMenu from './ExportMenu';
 import './fee-management.css';
 
 const DEFAULT_FEE_TYPES = [
@@ -198,12 +199,6 @@ function paymentHistoryMetadata(transaction) {
     `Transaction #${transaction.id}`,
   ];
   return details.filter(Boolean).join(' · ');
-}
-
-function csvCell(value) {
-  const text = String(value ?? '');
-  const safeText = /^[\t\r ]*[=+\-@]/.test(text) ? `'${text}` : text;
-  return `"${safeText.replace(/"/g, '""')}"`;
 }
 
 function parseFeeArrayResponse(response) {
@@ -2327,6 +2322,51 @@ function FeeCollectorPage({ token, stats, onBack, onNotify }) {
   const firstShown = invoices.count ? ((page - 1) * 20) + 1 : 0;
   const lastShown = Math.min(page * 20, invoices.count);
 
+  async function loadFilteredInvoicesForExport() {
+    const params = new URLSearchParams();
+    if (appliedNameSearch.trim()) params.set('full_name', appliedNameSearch.trim());
+    if (appliedStudentIdSearch.trim()) params.set('student_id', appliedStudentIdSearch.trim());
+    if (appliedPhoneSearch.trim()) params.set('phone', appliedPhoneSearch.trim());
+    if (appliedClassFilter !== 'all') params.set('class_grade', appliedClassFilter);
+    params.set('page_size', '50');
+
+    let pageNumber = 1;
+    let studentCount = 0;
+    const allInvoices = [];
+    do {
+      params.set('page', String(pageNumber));
+      const response = await adminRequest(`${adminEndpoints.feeInvoices}?${params}`, token);
+      if (!Number.isInteger(response?.count) || !Array.isArray(response.results)) {
+        throw new Error('The server returned an invalid fee export response.');
+      }
+      if (pageNumber === 1) studentCount = response.count;
+      if (response.results.length === 0 && (pageNumber - 1) * 50 < studentCount) {
+        throw new Error('Fee records could not be fully loaded for export.');
+      }
+      allInvoices.push(...response.results);
+      pageNumber += 1;
+    } while ((pageNumber - 1) * 50 < studentCount);
+
+    return allInvoices.map((invoice) => ({
+      student_name: invoice.student_name,
+      student_id: invoice.student_id,
+      admission_number: invoice.admission_number,
+      phone: invoice.registered_phone,
+      class: invoice.class_grade,
+      section: invoice.section,
+      fee: invoice.title,
+      invoice_number: invoice.invoice_number,
+      base_amount: invoice.base_amount,
+      discount: invoice.discount_amount,
+      late_fee: invoice.late_fee_amount,
+      total_amount: invoice.total_amount,
+      amount_paid: invoice.amount_paid,
+      balance_due: invoice.balance_due,
+      due_date: invoice.due_date,
+      status: statusLabel(invoiceStatus(invoice)),
+    }));
+  }
+
   async function collect(event) {
     event.preventDefault();
     const numericAmount = Number(payableAmount);
@@ -2415,41 +2455,6 @@ function FeeCollectorPage({ token, stats, onBack, onNotify }) {
     await Promise.all([invoices.load(), summary.load()]);
   }
 
-  function exportCurrentPage() {
-    const headers = [
-      'Student name', 'Student ID', 'Admission number', 'Phone', 'Class', 'Section',
-      'Invoice', 'Invoice number', 'Base amount', 'Discount', 'Late fee',
-      'Total amount', 'Amount paid', 'Balance due', 'Due date', 'Status',
-    ];
-    const rows = studentGroups.flatMap((student) => student.invoices.map((invoice) => [
-      invoice.student_name,
-      invoice.student_id,
-      invoice.admission_number,
-      invoice.registered_phone,
-      invoice.class_grade,
-      invoice.section,
-      invoice.title,
-      invoice.invoice_number,
-      invoice.base_amount,
-      invoice.discount_amount,
-      invoice.late_fee_amount,
-      invoice.total_amount,
-      invoice.amount_paid,
-      invoice.balance_due,
-      invoice.due_date,
-      statusLabel(invoiceStatus(invoice)),
-    ]));
-    const csv = [headers, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n');
-    const url = window.URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `edusure-fee-collector-page-${page}.csv`;
-    document.body.append(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
-  }
-
   return (
     <section className="fee-feature-page">
       <FeatureHeading
@@ -2486,7 +2491,7 @@ function FeeCollectorPage({ token, stats, onBack, onNotify }) {
           </form>
           <div className="fee-collector-results-heading">
             <p>Showing {firstShown}–{lastShown} of {invoices.count} students</p>
-            <button type="button" className="fee-secondary-button" onClick={exportCurrentPage} disabled={!studentGroups.length || invoices.loading}><FileText size={14} />Export current page</button>
+            <ExportMenu rows={loadFilteredInvoicesForExport} title="Fee collector records" fileName="fee-collector-records" disabled={!invoices.count || invoices.loading} />
           </div>
           <div className="fee-invoice-list fee-student-list" aria-live="polite">
             {invoices.loading ? <LoadingState rows={4} /> : invoices.error ? <ErrorState error={invoices.error} onRetry={() => invoices.load()} /> : !invoices.data.length ? (

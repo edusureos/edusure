@@ -13,13 +13,16 @@
     "@react-three/fiber": "^9.8.2",
     "@tailwindcss/vite": "^4.3.3",
     "firebase": "^13.3.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.9",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.54.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-leaflet": "^5.0.0",
     "tailwindcss": "^4.3.3",
-    "three": "^0.187.0"
+    "three": "^0.187.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/react": "^19.2.18",
